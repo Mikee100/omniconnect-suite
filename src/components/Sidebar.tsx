@@ -4,10 +4,14 @@ import {
   LayoutDashboard,
   Calendar,
   MessageSquare,
+  Phone,
   BookOpen,
   Settings,
   ChevronLeft,
   ChevronRight,
+  Instagram,
+  BarChart,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,7 +20,11 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Bookings', href: '/bookings', icon: Calendar },
   { name: 'Conversations', href: '/conversations', icon: MessageSquare },
+  { name: 'WhatsApp', href: '/whatsapp', icon: Phone },
+  { name: 'Instagram', href: '/instagram', icon: Instagram },
+  { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
+  { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

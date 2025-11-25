@@ -30,10 +30,7 @@ export function DataTable<T extends { id: string | number }>({
     if (typeof column.accessor === 'function') {
       return column.accessor(row);
     }
-    if (typeof column.accessor === 'string') {
-      return null; // string accessor not used
-    }
-    return row[column.accessor] as React.ReactNode;
+    return row[column.accessor as keyof T] as React.ReactNode;
   };
 
   return (

@@ -8,11 +8,14 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
 import Conversations from "./pages/Conversations";
+import WhatsApp from "./pages/WhatsApp";
+import Instagram from "./pages/Instagram";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { useAuthStore } from "./state/authStore";
+
 
 const queryClient = new QueryClient();
 
@@ -56,6 +59,26 @@ const App = () => {
                 <ProtectedRoute>
                   <Layout>
                     <Conversations />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/whatsapp"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WhatsApp />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/instagram"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Instagram />
                   </Layout>
                 </ProtectedRoute>
               }
