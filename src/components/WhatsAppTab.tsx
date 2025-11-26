@@ -13,36 +13,71 @@ import {
   fetchWhatsAppKeywordTrends,
   fetchWhatsAppAgentAIPerformance,
 } from '@/api/analytics';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
-import { User, MessageCircle, Send, TrendingUp } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
+import {
+  Users,
+  MessageSquare,
+  Send,
+  TrendingUp,
+  Clock,
+  Calendar,
+  Smile,
+  MessageCircle,
+  Activity,
+  Bot
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const metricCards = [
-  {
-    label: 'Total WhatsApp Customers',
-    icon: User,
-    color: 'bg-gradient-to-tr from-green-400 to-green-600',
-    key: 'totalCustomers',
-  },
-  {
-    label: 'Inbound Messages',
-    icon: MessageCircle,
-    color: 'bg-gradient-to-tr from-blue-400 to-blue-600',
-    key: 'inboundMessages',
-  },
-  {
-    label: 'Outbound Messages',
-    icon: Send,
-    color: 'bg-gradient-to-tr from-purple-400 to-purple-600',
-    key: 'outboundMessages',
-  },
-  {
-    label: 'Booking Conversion Rate',
-    icon: TrendingUp,
-    color: 'bg-gradient-to-tr from-yellow-400 to-yellow-600',
-    key: 'bookingConversionRate',
-    isPercent: true,
-  },
-];
+const COLORS = {
+  primary: '#3b82f6',
+  success: '#22c55e',
+  warning: '#eab308',
+  danger: '#ef4444',
+  neutral: '#94a3b8',
+  purple: '#8b5cf6',
+  teal: '#14b8a6',
+  slate: '#64748b'
+};
+
+const SENTIMENT_COLORS = {
+  positive: COLORS.success,
+  negative: COLORS.danger,
+  neutral: COLORS.neutral,
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg text-xs">
+        <p className="font-semibold text-gray-900 mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 text-gray-600">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span>{entry.name}:</span>
+            <span className="font-medium text-gray-900">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 const WhatsAppTab = () => {
   const [loading, setLoading] = useState(true);
@@ -60,378 +95,480 @@ const WhatsAppTab = () => {
   const [extremeMessages, setExtremeMessages] = useState<{ mostPositive: any[]; mostNegative: any[] }>({ mostPositive: [], mostNegative: [] });
   const [keywordTrends, setKeywordTrends] = useState<any[]>([]);
   const [agentAIPerformance, setAgentAIPerformance] = useState<any>(null);
-  const sentimentColors = {
-    positive: '#22c55e',
-    negative: '#ef4444',
-    neutral: '#a3a3a3',
-  };
 
   useEffect(() => {
     async function loadStats() {
       setLoading(true);
-      const [totalCustomers, inboundMessages, outboundMessages, bookingConversionRate, peakHours, peakDays, sentimentData, sentimentTrendData, sentimentByTopicData, extremeMessagesData, keywordTrendsData, agentAIPerformanceData] = await Promise.all([
-        fetchTotalWhatsAppCustomers(),
-        fetchTotalInboundWhatsAppMessages(),
-        fetchTotalOutboundWhatsAppMessages(),
-        fetchWhatsAppBookingConversionRate(),
-        fetchPeakChatHours(),
-        fetchPeakChatDays(),
-        fetchWhatsAppSentimentAnalytics(),
-        fetchWhatsAppSentimentTrend(),
-        fetchWhatsAppSentimentByTopic(),
-        fetchWhatsAppMostExtremeMessages(),
-        fetchWhatsAppKeywordTrends(),
-        fetchWhatsAppAgentAIPerformance(),
-      ]);
-      setStats({
-        totalCustomers,
-        inboundMessages,
-        outboundMessages,
-        bookingConversionRate,
-        peakHours,
-        peakDays,
-      });
-      setSentiment(sentimentData);
-      setSentimentTrend(sentimentTrendData);
-      setSentimentByTopic(sentimentByTopicData);
-      setExtremeMessages(extremeMessagesData);
-      setKeywordTrends(keywordTrendsData);
-      setAgentAIPerformance(agentAIPerformanceData);
-      setLoading(false);
+      try {
+        const [
+          totalCustomers,
+          inboundMessages,
+          outboundMessages,
+          bookingConversionRate,
+          peakHours,
+          peakDays,
+          sentimentData,
+          sentimentTrendData,
+          sentimentByTopicData,
+          extremeMessagesData,
+          keywordTrendsData,
+          agentAIPerformanceData
+        ] = await Promise.all([
+          fetchTotalWhatsAppCustomers(),
+          fetchTotalInboundWhatsAppMessages(),
+          fetchTotalOutboundWhatsAppMessages(),
+          fetchWhatsAppBookingConversionRate(),
+          fetchPeakChatHours(),
+          fetchPeakChatDays(),
+          fetchWhatsAppSentimentAnalytics(),
+          fetchWhatsAppSentimentTrend(),
+          fetchWhatsAppSentimentByTopic(),
+          fetchWhatsAppMostExtremeMessages(),
+          fetchWhatsAppKeywordTrends(),
+          fetchWhatsAppAgentAIPerformance(),
+        ]);
+
+        setStats({
+          totalCustomers,
+          inboundMessages,
+          outboundMessages,
+          bookingConversionRate,
+          peakHours,
+          peakDays,
+        });
+        setSentiment(sentimentData);
+        setSentimentTrend(sentimentTrendData);
+        setSentimentByTopic(sentimentByTopicData);
+        setExtremeMessages(extremeMessagesData);
+        setKeywordTrends(keywordTrendsData);
+        setAgentAIPerformance(agentAIPerformanceData);
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+      } finally {
+        setLoading(false);
+      }
     }
     loadStats();
-                      {/* Agent/AI Performance Analytics */}
-                      <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                        <h3 className="font-semibold mb-4 text-lg">Agent vs AI Performance</h3>
-                        {agentAIPerformance ? (
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm border">
-                              <thead>
-                                <tr className="bg-gray-100">
-                                  <th className="px-4 py-2 text-left">Metric</th>
-                                  <th className="px-4 py-2 text-center">Agent</th>
-                                  <th className="px-4 py-2 text-center">AI</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Messages Handled</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.agent.count}</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.ai.count}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Positive (%)</td>
-                                  <td className="px-4 py-2 text-center text-green-600">{agentAIPerformance.agent.sentiment.positive}</td>
-                                  <td className="px-4 py-2 text-center text-green-600">{agentAIPerformance.ai.sentiment.positive}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Neutral (%)</td>
-                                  <td className="px-4 py-2 text-center text-gray-500">{agentAIPerformance.agent.sentiment.neutral}</td>
-                                  <td className="px-4 py-2 text-center text-gray-500">{agentAIPerformance.ai.sentiment.neutral}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Negative (%)</td>
-                                  <td className="px-4 py-2 text-center text-red-600">{agentAIPerformance.agent.sentiment.negative}</td>
-                                  <td className="px-4 py-2 text-center text-red-600">{agentAIPerformance.ai.sentiment.negative}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Resolution Rate (%)</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.agent.resolutionRate}</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.ai.resolutionRate}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-4 py-2 font-medium">Escalation Rate (%)</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.agent.escalationRate}</td>
-                                  <td className="px-4 py-2 text-center">{agentAIPerformance.ai.escalationRate}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-700">No agent/AI performance data available.</div>
-                        )}
-                      </div>
   }, []);
 
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="h-80 rounded-xl" />
+          <Skeleton className="h-80 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  const metricCards = [
+    {
+      label: 'Total Customers',
+      value: stats.totalCustomers,
+      icon: Users,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+    {
+      label: 'Inbound Msgs',
+      value: stats.inboundMessages,
+      icon: MessageSquare,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+    },
+    {
+      label: 'Outbound Msgs',
+      value: stats.outboundMessages,
+      icon: Send,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+    {
+      label: 'Conversion Rate',
+      value: `${(stats.bookingConversionRate * 100).toFixed(1)}%`,
+      icon: TrendingUp,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+    },
+  ];
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-foreground mb-1">WhatsApp Analytics</h2>
-        <p className="text-muted-foreground mb-4">
-          Track your WhatsApp engagement, conversion, and customer activity in real time.
-        </p>
+    <div className="space-y-6 p-1">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">WhatsApp Analytics</h2>
+          <p className="text-sm text-gray-500">Real-time insights into customer engagement and performance.</p>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-40">
-          <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></span>
-        </div>
-      ) : (
-        <>
-                   
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {metricCards.map((card) => {
-              const Icon = card.icon;
-              const value = card.isPercent
-                ? `${(stats[card.key] * 100).toFixed(1)}%`
-                : stats[card.key];
-              return (
-                <div
-                  key={card.key}
-                  className={`rounded-xl shadow-md p-5 flex items-center gap-4 ${card.color} text-white`}
-                >
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <Icon className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{value}</div>
-                    <div className="text-sm opacity-80">{card.label}</div>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metricCards.map((card, idx) => (
+          <Card key={idx} className="border-none shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{card.label}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+              </div>
+              <div className={`p-3 rounded-xl ${card.bg}`}>
+                <card.icon className={`w-5 h-5 ${card.color}`} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Charts Row 1: Peak Times */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-500" /> Peak Chat Hours
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.peakHours}>
+                  <defs>
+                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="hour"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickFormatter={(val) => `${val}:00`}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke={COLORS.primary}
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorCount)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" /> Peak Chat Days
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.peakDays}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar
+                    dataKey="count"
+                    fill={COLORS.purple}
+                    radius={[4, 4, 0, 0]}
+                    barSize={32}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2: Sentiment & Trends */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Sentiment Distribution */}
+        <Card className="border-none shadow-sm lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Smile className="w-4 h-4 text-gray-500" /> Customer Sentiment
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full relative">
+              {sentiment?.distribution ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(sentiment.distribution).map(([name, value]) => ({ name, value }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.keys(sentiment.distribution).map((key, index) => (
+                        <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[key as keyof typeof SENTIMENT_COLORS]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-gray-400">No data</div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-gray-900">{sentiment?.total || 0}</span>
+                  <p className="text-[10px] text-gray-500 uppercase">Analyzed</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sentiment Trend */}
+        <Card className="border-none shadow-sm lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-gray-500" /> Sentiment Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sentimentTrend} stackOffset="sign">
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Bar dataKey="positive" name="Positive" stackId="a" fill={SENTIMENT_COLORS.positive} radius={[0, 0, 4, 4]} />
+                  <Bar dataKey="neutral" name="Neutral" stackId="a" fill={SENTIMENT_COLORS.neutral} />
+                  <Bar dataKey="negative" name="Negative" stackId="a" fill={SENTIMENT_COLORS.negative} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 3: Topics & Keywords */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-gray-500" /> Sentiment by Topic
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sentimentByTopic} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="topic"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    width={100}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="positive" stackId="a" fill={SENTIMENT_COLORS.positive} barSize={20} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="neutral" stackId="a" fill={SENTIMENT_COLORS.neutral} barSize={20} />
+                  <Bar dataKey="negative" stackId="a" fill={SENTIMENT_COLORS.negative} barSize={20} radius={[4, 0, 0, 4]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-gray-500" /> Trending Keywords
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={keywordTrends?.slice(0, 10)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="keyword"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar
+                    dataKey="count"
+                    fill={COLORS.teal}
+                    radius={[4, 4, 0, 0]}
+                    barSize={32}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 4: Agent vs AI */}
+      {agentAIPerformance && (
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Bot className="w-4 h-4 text-gray-500" /> Agent vs AI Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
+                  <tr>
+                    <th className="px-6 py-3 font-medium">Metric</th>
+                    <th className="px-6 py-3 font-medium text-center">Human Agent</th>
+                    <th className="px-6 py-3 font-medium text-center">AI Assistant</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">Messages Handled</td>
+                    <td className="px-6 py-4 text-center text-gray-600">{agentAIPerformance.agent.count}</td>
+                    <td className="px-6 py-4 text-center text-gray-600">{agentAIPerformance.ai.count}</td>
+                  </tr>
+                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">Resolution Rate</td>
+                    <td className="px-6 py-4 text-center">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {agentAIPerformance.agent.resolutionRate}%
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        {agentAIPerformance.ai.resolutionRate}%
+                      </Badge>
+                    </td>
+                  </tr>
+                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">Avg. Sentiment</td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-500"
+                            style={{ width: `${agentAIPerformance.agent.sentiment.positive}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500">{agentAIPerformance.agent.sentiment.positive}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-500"
+                            style={{ width: `${agentAIPerformance.ai.sentiment.positive}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500">{agentAIPerformance.ai.sentiment.positive}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Row 5: Extreme Messages */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-emerald-700 flex items-center gap-2">
+              <Smile className="w-4 h-4" /> Top Positive Feedback
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {extremeMessages.mostPositive?.slice(0, 3).map((msg: any, idx: number) => (
+                <div key={idx} className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-100 text-sm">
+                  <p className="text-gray-800 italic">"{msg.content}"</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] text-emerald-600 font-medium">Score: {msg.score}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-semibold mb-4 text-lg">Peak Chat Hours</h3>
-              {stats.peakHours && stats.peakHours.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={stats.peakHours} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" label={{ value: 'Hour', position: 'insideBottom', offset: -5 }} />
-                    <YAxis allowDecimals={false} label={{ value: 'Messages', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-sm text-gray-700">No data</div>
-              )}
+              ))}
+              {!extremeMessages.mostPositive?.length && <p className="text-sm text-gray-400">No data available</p>}
             </div>
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-semibold mb-4 text-lg">Peak Chat Days</h3>
-              {stats.peakDays && stats.peakDays.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={stats.peakDays} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" label={{ value: 'Day', position: 'insideBottom', offset: -5 }} />
-                    <YAxis allowDecimals={false} label={{ value: 'Messages', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-sm text-gray-700">No data</div>
-              )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-rose-700 flex items-center gap-2">
+              <Activity className="w-4 h-4" /> Critical Feedback
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {extremeMessages.mostNegative?.slice(0, 3).map((msg: any, idx: number) => (
+                <div key={idx} className="p-3 bg-rose-50/50 rounded-lg border border-rose-100 text-sm">
+                  <p className="text-gray-800 italic">"{msg.content}"</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] text-rose-600 font-medium">Score: {msg.score}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+              {!extremeMessages.mostNegative?.length && <p className="text-sm text-gray-400">No data available</p>}
             </div>
-          </div>
-
-           {/* Sentiment Analytics Pie Chart */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Customer Mood (AI Sentiment)</h3>
-                      {sentiment && sentiment.distribution ? (
-                        <div className="flex flex-col md:flex-row gap-8">
-                          <div className="flex-1 flex flex-col items-center">
-                            <ResponsiveContainer width={250} height={250}>
-                              <PieChart>
-                                <Pie
-                                  data={Object.entries(sentiment.distribution).map(([mood, value]) => ({ name: mood, value }))}
-                                  dataKey="value"
-                                  nameKey="name"
-                                  cx="50%"
-                                  cy="50%"
-                                  outerRadius={80}
-                                  label
-                                >
-                                  {Object.keys(sentiment.distribution).map((mood, idx) => (
-                                    <Cell key={mood} fill={sentimentColors[mood]} />
-                                  ))}
-                                </Pie>
-                                <Legend />
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <div className="text-sm text-gray-500 mt-2">Based on last {sentiment.total} messages</div>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold mb-2">Sample Messages</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {['positive', 'neutral', 'negative'].map((mood) => (
-                                <div key={mood} className="bg-gray-50 rounded p-3 border">
-                                  <div className="font-bold mb-1" style={{ color: sentimentColors[mood] }}>{mood.charAt(0).toUpperCase() + mood.slice(1)}</div>
-                                  {sentiment.samples && sentiment.samples[mood] && sentiment.samples[mood].length > 0 ? (
-                                    <ul className="text-xs space-y-1">
-                                      {sentiment.samples[mood].map((msg: any, idx: number) => (
-                                        <li key={idx} className="italic">"{msg.content}"</li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <div className="text-xs text-gray-400">No samples</div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-700">No sentiment data available.</div>
-                      )}
-                    </div>
-
-                    {/* Sentiment Trend Line Chart */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Sentiment Trend Over Time</h3>
-                      {sentimentTrend && sentimentTrend.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={sentimentTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -5 }} />
-                            <YAxis allowDecimals={false} label={{ value: 'Messages', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="positive" stackId="a" fill={sentimentColors.positive} name="Positive" />
-                            <Bar dataKey="neutral" stackId="a" fill={sentimentColors.neutral} name="Neutral" />
-                            <Bar dataKey="negative" stackId="a" fill={sentimentColors.negative} name="Negative" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="text-sm text-gray-700">No sentiment trend data available.</div>
-                      )}
-                    </div>
-
-                    {/* Sentiment by Topic */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Sentiment by Topic</h3>
-                      {sentimentByTopic && sentimentByTopic.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={sentimentByTopic} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="topic" label={{ value: 'Topic', position: 'insideBottom', offset: -5 }} />
-                            <YAxis allowDecimals={false} label={{ value: 'Messages', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="positive" stackId="a" fill={sentimentColors.positive} name="Positive" />
-                            <Bar dataKey="neutral" stackId="a" fill={sentimentColors.neutral} name="Neutral" />
-                            <Bar dataKey="negative" stackId="a" fill={sentimentColors.negative} name="Negative" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="text-sm text-gray-700">No sentiment by topic data available.</div>
-                      )}
-                    </div>
-
-                    {/* Sentiment by Topic/Intent Bar Chart */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Sentiment by Topic/Intent</h3>
-                      {sentimentByTopic && sentimentByTopic.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={sentimentByTopic} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="topic" label={{ value: 'Topic/Intent', position: 'insideBottom', offset: -5 }} />
-                            <YAxis allowDecimals={false} label={{ value: 'Messages', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="positive" stackId="a" fill={sentimentColors.positive} name="Positive" />
-                            <Bar dataKey="neutral" stackId="a" fill={sentimentColors.neutral} name="Neutral" />
-                            <Bar dataKey="negative" stackId="a" fill={sentimentColors.negative} name="Negative" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="text-sm text-gray-700">No sentiment by topic data available.</div>
-                      )}
-                    </div>
-
-
-                    {/* Keyword/Topic Trends */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Keyword/Topic Trends</h3>
-                      {keywordTrends && keywordTrends.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={keywordTrends.slice(0, 20)} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="keyword" label={{ value: 'Keyword', position: 'insideBottom', offset: -5 }} interval={0} angle={-30} textAnchor="end" height={80} />
-                            <YAxis allowDecimals={false} label={{ value: 'Count', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Bar dataKey="count" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="text-sm text-gray-700">No keyword trend data available.</div>
-                      )}
-                    </div>
-                    {/* Most Positive/Negative Messages */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Most Positive and Negative Messages</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-green-50 p-4 rounded-lg shadow">
-                          <h4 className="font-semibold mb-2 text-green-700">Most Positive Messages</h4>
-                          {extremeMessages.mostPositive && extremeMessages.mostPositive.length > 0 ? (
-                            <ul className="text-sm space-y-2">
-                              {extremeMessages.mostPositive.map((msg: any, idx: number) => (
-                                <li key={idx} className="p-3 bg-green-100 rounded border-l-4 border-green-500">
-                                  "{msg.content}"
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="text-xs text-gray-400">No data</div>
-                          )}
-                        </div>
-                        <div className="bg-red-50 p-4 rounded-lg shadow">
-                          <h4 className="font-semibold mb-2 text-red-700">Most Negative Messages</h4>
-                          {extremeMessages.mostNegative && extremeMessages.mostNegative.length > 0 ? (
-                            <ul className="text-sm space-y-2">
-                              {extremeMessages.mostNegative.map((msg: any, idx: number) => (
-                                <li key={idx} className="p-3 bg-red-100 rounded border-l-4 border-red-500">
-                                  "{msg.content}"
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="text-xs text-gray-400">No data</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Most Positive/Negative Messages Section */}
-                    <div className="bg-white rounded-xl shadow-md p-6 mt-8">
-                      <h3 className="font-semibold mb-4 text-lg">Most Positive & Negative Messages</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                          <h4 className="font-semibold mb-2" style={{ color: sentimentColors.positive }}>Most Positive</h4>
-                          {extremeMessages.mostPositive && extremeMessages.mostPositive.length > 0 ? (
-                            <ul className="space-y-2">
-                              {extremeMessages.mostPositive.map((msg, idx) => (
-                                <li key={msg.id} className="bg-green-50 border-l-4 border-green-400 p-3 rounded text-sm">
-                                  <span className="block italic">"{msg.content}"</span>
-                                  <span className="block text-xs text-gray-500 mt-1">Score: {msg.score} | {new Date(msg.createdAt).toLocaleString()}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="text-xs text-gray-400">No positive messages found.</div>
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold mb-2" style={{ color: sentimentColors.negative }}>Most Negative</h4>
-                          {extremeMessages.mostNegative && extremeMessages.mostNegative.length > 0 ? (
-                            <ul className="space-y-2">
-                              {extremeMessages.mostNegative.map((msg, idx) => (
-                                <li key={msg.id} className="bg-red-50 border-l-4 border-red-400 p-3 rounded text-sm">
-                                  <span className="block italic">"{msg.content}"</span>
-                                  <span className="block text-xs text-gray-500 mt-1">Score: {msg.score} | {new Date(msg.createdAt).toLocaleString()}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="text-xs text-gray-400">No negative messages found.</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-        </>
-      )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

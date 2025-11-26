@@ -18,11 +18,12 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { listBookings, createBooking, getServices, getAvailableSlots, Booking as BookingType, Service } from '@/api/bookings';
+import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, Booking as BookingType, Service } from '@/api/bookings';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Booking {
   id: string;
@@ -35,30 +36,9 @@ interface Booking {
   googleEventId?: string;
 }
 
-interface Package {
-  id: string;
-  name: string;
-  type: string;
-  price: number;
-  deposit: number;
-  duration: string;
-  images: number;
-  makeup: boolean;
-  outfits: number;
-  styling: boolean;
-  photobook: boolean;
-  photobookSize?: string;
-  mount: boolean;
-  balloonBackdrop: boolean;
-  wig: boolean;
-  notes?: string;
-}
-
 export default function Bookings() {
-    const [bookingForSomeoneElse, setBookingForSomeoneElse] = useState(false);
-    const [recipientName, setRecipientName] = useState('');
-    const [recipientPhone, setRecipientPhone] = useState('');
-    const [confirmPhone, setConfirmPhone] = useState(true);
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,10 +48,14 @@ export default function Bookings() {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [services, setServices] = useState<Service[]>([]);
-  const [availableSlots, setAvailableSlots] = useState<Date[]>([]);
+  const [availableHours, setAvailableHours] = useState<{ time: string, available: boolean }[]>([]);
   const [creating, setCreating] = useState(false);
   const [packages, setPackages] = useState<Package[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string>('');
+  const [isPaymentPending, setIsPaymentPending] = useState(false);
+
+  // Helper to get package by id
+  const getPackageById = (id: string) => packages.find(pkg => pkg.id === id);
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   const { toast } = useToast();
   const { user } = useAuth();
@@ -105,19 +89,31 @@ export default function Bookings() {
   const fetchPackages = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/bookings/packages`);
-      setPackages(Array.isArray(res.data) ? res.data : []);
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        setSelectedPackage(res.data[0].id);
+      const pkgs = Array.isArray(res.data) ? res.data : [];
+      setPackages(pkgs);
+      if (pkgs.length > 0) {
+        const defaultPkg = pkgs[0];
+        setSelectedPackage(defaultPkg.id);
+        setSelectedService(defaultPkg.name);
       }
     } catch (err) {
       setPackages([]);
     }
   };
 
+  // Sync service when package changes (e.g. if set externally or via other means)
+  useEffect(() => {
+    if (selectedPackage && packages.length > 0) {
+      const pkg = packages.find(p => p.id === selectedPackage);
+      if (pkg && pkg.name !== selectedService) {
+        setSelectedService(pkg.name);
+      }
+    }
+  }, [selectedPackage, packages]);
 
   useEffect(() => {
     if (selectedDate && selectedService) {
-      fetchAvailableSlots();
+      fetchAvailableHours();
     }
   }, [selectedDate, selectedService]);
 
@@ -129,6 +125,14 @@ export default function Bookings() {
         let name = b.customer.name;
         if (name && name.startsWith('WhatsApp User ')) {
           name = name.replace(/^WhatsApp User\s+/, '');
+        }
+        // If name is missing or 'Admin User', prefer phone, else fallback to 'No Name / No Phone'
+        if (!name || name.trim().toLowerCase() === 'admin user') {
+          if (b.customer.phone && b.customer.phone.trim() !== '') {
+            name = b.customer.phone;
+          } else {
+            name = 'No Name / No Phone';
+          }
         }
         return {
           id: b.id,
@@ -169,15 +173,15 @@ export default function Bookings() {
     }
   };
 
-  const fetchAvailableSlots = async () => {
+  const fetchAvailableHours = async () => {
     if (!selectedDate || !selectedService) return;
     try {
-      const slots = await getAvailableSlots(selectedDate.toISOString().split('T')[0], selectedService);
-      setAvailableSlots(slots);
+      const hours = await getAvailableHours(selectedDate.toISOString().split('T')[0], selectedService);
+      setAvailableHours(hours);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load available slots',
+        description: 'Failed to load available hours',
         variant: 'destructive',
       });
     }
@@ -186,10 +190,11 @@ export default function Bookings() {
   const handleCreateBooking = async () => {
     if (!selectedDate || !selectedTime || !selectedService || !user || !selectedPackage) return;
     // Validate recipient info
-    if (bookingForSomeoneElse && (!recipientName || !recipientPhone)) {
+    const phoneToSend = recipientPhone;
+    if (!recipientName || !phoneToSend || phoneToSend.trim().length < 8) {
       toast({
         title: 'Missing info',
-        description: 'Please provide the recipient\'s name and phone number.',
+        description: 'Please provide your name and a valid phone number.',
         variant: 'destructive',
       });
       return;
@@ -201,28 +206,76 @@ export default function Bookings() {
       const [hours, minutes] = selectedTime.split(':').map(Number);
       dateTime.setHours(hours, minutes);
 
-      await createBooking({
-        customerId: user.id, // Assuming user.id is customerId
-        customerName: user.name, // Send the real customer name
+      // 1. Update booking draft
+      await updateBookingDraft(user.id, {
         service: selectedService,
         packageId: selectedPackage,
-        dateTime: dateTime.toISOString(),
-        recipientName: bookingForSomeoneElse ? recipientName : user.name,
-        recipientPhone: bookingForSomeoneElse ? recipientPhone : (user?.phone || ''),
+        dateTimeIso: dateTime.toISOString(),
+        name: recipientName,
+        recipientName: recipientName,
+        recipientPhone: phoneToSend,
       });
 
-      toast({
-        title: 'Success',
-        description: 'Booking created successfully',
+      // 2. Trigger STK push and payment
+      const result = await fetch(`${API_BASE}/api/bookings/complete-draft/${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
+      const data = await result.json();
+
+      toast({
+        title: 'Payment Required',
+        description: data.message || 'Please complete the payment on your phone to confirm the booking.',
+      });
+
       setIsDialogOpen(false);
-      fetchBookings();
+      setTimeout(() => setIsPaymentPending(true), 0); // Ensure state update before blocking
+
+      // Poll for payment/booking confirmation using checkoutRequestId
+      let pollCount = 0;
+      const maxPolls = 20; // e.g. poll for up to 60 seconds (20 x 3s)
+      const pollInterval = 3000;
+      let status = 'pending';
+      const checkoutRequestId = data.checkoutRequestId;
+      if (!checkoutRequestId) {
+        throw new Error('No checkoutRequestId returned from backend');
+      }
+      const { pollPaymentStatus } = await import('@/api/payments');
+      while (status === 'pending' && pollCount < maxPolls) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await pollPaymentStatus(checkoutRequestId);
+        console.log('[pollPaymentStatus]', res, 'pollCount:', pollCount, 'status:', status);
+        if (!res || typeof res.status === 'undefined') {
+          console.warn('No status returned from pollPaymentStatus:', res);
+          break;
+        }
+        status = res.status;
+        if (status === 'success' || status === 'confirmed') {
+          toast({
+            title: 'Booking Confirmed!',
+            description: 'Your payment was received and your booking is now confirmed.',
+            variant: 'default',
+          });
+          fetchBookings();
+          setIsPaymentPending(false);
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        pollCount++;
+      }
+      if (status !== 'success' && status !== 'confirmed') {
+        toast({
+          title: 'Payment Pending',
+          description: `We did not receive payment confirmation in time. Last status: ${status}. If you paid, please check your messages or contact support.`,
+          variant: 'default',
+        });
+      }
       setSelectedDate(new Date());
       setSelectedTime('');
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create booking',
+        description: 'Failed to initiate payment or booking',
         variant: 'destructive',
       });
     } finally {
@@ -264,9 +317,9 @@ export default function Bookings() {
   // Generate modifiers for calendar based on services
   const calendarModifiers = Array.isArray(services)
     ? services.reduce((acc, service) => {
-        acc[service.name] = bookings.filter(b => b.service === service.name).map(b => b.date);
-        return acc;
-      }, {} as Record<string, Date[]>)
+      acc[service.name] = bookings.filter(b => b.service === service.name).map(b => b.date);
+      return acc;
+    }, {} as Record<string, Date[]>)
     : {};
 
   // Add modifier for any date that has booking(s)
@@ -274,37 +327,26 @@ export default function Bookings() {
 
   const calendarModifiersStyles = Array.isArray(services)
     ? services.reduce((acc, service) => {
-        const color = getServiceColor(service.name);
-        acc[service.name] = {
-          backgroundColor: color,
-          color: 'white',
-          fontWeight: 'bold'
-        };
-        return acc;
-      }, {} as Record<string, React.CSSProperties>)
+      const color = getServiceColor(service.name);
+      acc[service.name] = {
+        backgroundColor: color,
+        color: 'white',
+        fontWeight: 'bold'
+      };
+      return acc;
+    }, {} as Record<string, React.CSSProperties>)
     : {};
-
-  // Add style for hasBooking modifier to show green dot
-  calendarModifiersStyles.hasBooking = {
-    position: 'relative',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      bottom: '4px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '8px',
-      height: '8px',
-      borderRadius: '9999px',
-      backgroundColor: 'green',
-      display: 'block',
-    }
-  };
 
   const columns = [
     {
       header: 'Customer',
       accessor: 'customerName' as keyof Booking,
+      cell: (row: Booking) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900">{row.customerName}</span>
+          <span className="text-sm text-gray-500">{row.customerPhone}</span>
+        </div>
+      )
     },
     {
       header: 'Service',
@@ -313,16 +355,11 @@ export default function Bookings() {
         const color = getServiceColor(row.service);
         return (
           <span
-            style={{ 
-              backgroundColor: color, 
-              color: 'white', 
-              borderRadius: '9999px', 
-              padding: '0.35rem 1rem', 
-              display: 'inline-block',
-              boxShadow: `0 0 8px ${color}`,
-              letterSpacing: '0.04em',
-              textShadow: `0 0 2px rgba(0,0,0,0.3)`,
-              fontWeight: '600'
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            style={{
+              backgroundColor: `${color}20`, // 20% opacity
+              color: color,
+              border: `1px solid ${color}40`
             }}
           >
             {row.service}
@@ -331,377 +368,329 @@ export default function Bookings() {
       }
     },
     {
-      header: 'Date',
+      header: 'Date & Time',
       accessor: (row: Booking) => row.date.toLocaleDateString(),
-    },
-    {
-      header: 'Time',
-      accessor: 'time' as keyof Booking,
+      cell: (row: Booking) => (
+        <div className="flex flex-col">
+          <span className="text-gray-900">{row.date.toLocaleDateString()}</span>
+          <span className="text-sm text-gray-500">{row.time}</span>
+        </div>
+      )
     },
     {
       header: 'Status',
       accessor: (row: Booking) => (
-        <Badge variant={getStatusVariant(row.status)}>
-          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+        <Badge variant={getStatusVariant(row.status)} className="capitalize">
+          {row.status}
         </Badge>
       ),
     },
   ];
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Bookings</h1>
-        <p className="text-muted-foreground">
-          Manage and track all customer bookings
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50/50 p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search bookings..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="provisional">Provisional</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Payment Pending Modal */}
+        <Dialog open={isPaymentPending}>
+          <DialogContent className="sm:max-w-md">
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-2" />
+              <h3 className="text-lg font-semibold">Waiting for Payment</h3>
+              <p className="text-center text-muted-foreground max-w-xs">
+                Please complete the payment on your phone to confirm your booking.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Bookings</h1>
+            <p className="text-muted-foreground mt-1 text-lg">
+              Manage appointments and schedules
+            </p>
+          </div>
+
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button size="lg" className="shadow-sm">
+                <Plus className="mr-2 h-5 w-5" />
                 New Booking
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-                            <div className="mb-2">
-                              <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={bookingForSomeoneElse}
-                                  onChange={e => setBookingForSomeoneElse(e.target.checked)}
-                                />
-                                Booking for someone else?
-                              </label>
-                            </div>
-                            {bookingForSomeoneElse ? (
-                              <>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="recipientName" className="text-right">Recipient Name</Label>
-                                  <Input
-                                    id="recipientName"
-                                    className="col-span-3"
-                                    value={recipientName}
-                                    onChange={e => setRecipientName(e.target.value)}
-                                    placeholder="Enter recipient's name"
-                                  />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="recipientPhone" className="text-right">Recipient Phone</Label>
-                                  <Input
-                                    id="recipientPhone"
-                                    className="col-span-3"
-                                    value={recipientPhone}
-                                    onChange={e => setRecipientPhone(e.target.value)}
-                                    placeholder="Enter recipient's phone number"
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="confirmPhone" className="text-right">Is this your WhatsApp number?</Label>
-                                <div className="col-span-3 flex items-center gap-2">
-                                  <span>{user?.phone || 'No phone on profile'}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={confirmPhone}
-                                    onChange={e => setConfirmPhone(e.target.checked)}
-                                  />
-                                  <span>Yes</span>
-                                </div>
-                                {!confirmPhone && (
-                                  <Input
-                                    className="col-span-3 mt-2"
-                                    value={recipientPhone}
-                                    onChange={e => setRecipientPhone(e.target.value)}
-                                    placeholder="Enter your preferred phone number"
-                                  />
-                                )}
-                              </div>
-                            )}
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Booking</DialogTitle>
+                <DialogTitle className="text-2xl">Create New Booking</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Service selection removed as it is no longer used in createBooking */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="package" className="text-right">
-                    Package
-                  </Label>
-                  <Select value={selectedPackage} onValueChange={setSelectedPackage}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select package" />
+
+              <div className="grid gap-6 py-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="recipientName">Customer Name</Label>
+                  <Input
+                    id="recipientName"
+                    value={recipientName}
+                    onChange={e => setRecipientName(e.target.value)}
+                    placeholder="Enter customer name"
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="recipientPhone">Phone Number</Label>
+                  <Input
+                    id="recipientPhone"
+                    value={recipientPhone}
+                    onChange={e => setRecipientPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Package</Label>
+                  <Select value={selectedPackage} onValueChange={val => {
+                    setSelectedPackage(val);
+                    const pkg = getPackageById(val);
+                    if (pkg) setSelectedService(pkg.name);
+                  }}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select a package" />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.isArray(packages) && packages.map((pkg) => (
                         <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.name} ({pkg.price})
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{pkg.name}</span>
+                            <span className="text-muted-foreground text-sm">{pkg.price}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">Date</Label>
-                  <div className="col-span-3">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      className="rounded-md border"
-                    />
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid gap-2">
+                    <Label>Date</Label>
+                    <div className="border rounded-md p-2 flex justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        className="rounded-md"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Time</Label>
+                    <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
+                      {availableHours.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                          <Clock className="h-8 w-8 mb-2 opacity-20" />
+                          <p className="text-sm">No available times.</p>
+                          <p className="text-xs mt-1">Select a date and package first.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 p-2">
+                          {availableHours.map(({ time, available }) => {
+                            const d = new Date(time);
+                            const timeStr = d.toTimeString().split(' ')[0];
+                            const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const isSelected = selectedTime === timeStr;
+
+                            return (
+                              <Button
+                                key={time}
+                                variant={isSelected ? "default" : "outline"}
+                                disabled={!available}
+                                onClick={() => setSelectedTime(timeStr)}
+                                className={`w-full justify-start ${!available ? 'opacity-50' : ''}`}
+                                size="sm"
+                              >
+                                {label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="time" className="text-right">
-                    Time
-                  </Label>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSlots.map((slot) => (
-                        <SelectItem key={slot.toISOString()} value={slot.toTimeString().split(' ')[0]}>
-                          {slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
                   Cancel
                 </Button>
-                <Button onClick={handleCreateBooking} disabled={creating}>
-                  {creating ? 'Creating...' : 'Create Booking'}
+                <Button
+                  onClick={handleCreateBooking}
+                  disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
+                  size="lg"
+                >
+                  {creating ? 'Creating...' : 'Confirm Booking'}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
-      </div>
 
-      {/* Enhanced Google Calendar - Full Screen Experience */}
-      <div className="w-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden mb-10">
-        <div className="flex items-center gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <img 
-            src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" 
-            alt="Google Calendar" 
-            className="w-10 h-10"
-          />
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">Google Calendar Bookings</h2>
-            <p className="text-lg text-gray-600 mt-1">Interactive calendar view of all your appointments</p>
-          </div>
-        </div>
-        
-        <div className="flex flex-col lg:flex-row p-6 gap-8 min-h-[800px]">
-          {/* Calendar Container - Takes 70% width on large screens */}
-          <div className="lg:w-3/4">
-            <div className="bg-white rounded-2xl border-2 border-blue-100 p-8 shadow-lg">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="w-full"
-                modifiers={calendarModifiers}
-                modifiersStyles={calendarModifiersStyles}
-                classNames={{
-                  root: "text-3xl",
-                  month: "space-y-8 w-full",
-                  caption: "flex justify-center pt-1 relative items-center text-4xl",
-                  caption_label: "text-4xl font-bold text-gray-900",
-                  nav: "space-x-1 flex items-center",
-                  nav_button: "h-12 w-12 bg-transparent p-0 opacity-50 hover:opacity-100",
-                  nav_button_previous: "absolute left-1",
-                  nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse space-y-6",
-                  head_row: "flex justify-between mt-8",
-                  head_cell: "text-gray-600 rounded-md w-16 font-bold text-2xl",
-                  row: "flex w-full justify-between mt-4",
-                  cell: "h-16 w-16 text-center text-2xl p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-gray-100 [&:has([aria-selected])]:bg-gray-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                  day: "h-16 w-16 p-0 font-normal text-2xl aria-selected:opacity-100 hover:bg-gray-100 rounded-lg",
-                  day_selected: "bg-blue-600 text-white hover:bg-blue-700 focus:bg-blue-700",
-                  day_today: "bg-blue-100 text-blue-900",
-                  day_outside: "text-gray-400 opacity-50",
-                  day_disabled: "text-gray-400 opacity-50",
-                  day_range_middle: "aria-selected:bg-gray-100 aria-selected:text-gray-900",
-                  day_hidden: "invisible",
-                }}
-              />
-            </div>
-          </div>
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-8">
 
-          {/* Bookings Sidebar - Takes 30% width on large screens */}
-          <div className="lg:w-1/4">
-            <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-lg h-full">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                Bookings for {selectedDate?.toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </h3>
-              
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                {(() => {
-                  const filtered = bookings.filter(
-                    booking => booking.date.toDateString() === selectedDate?.toDateString()
-                  );
-                  
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">📅</div>
-                        <p className="text-xl text-gray-500 font-medium">No bookings for this date</p>
-                        <p className="text-gray-400 mt-2">Select another date or create a new booking</p>
-                      </div>
-                    );
-                  }
-                  
-                  return filtered.map(booking => (
-                    <div 
-                      key={booking.id} 
-                      className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <p className="font-bold text-lg text-gray-900">{booking.customerName}</p>
-                          <p className="text-base text-gray-600 mt-1">{booking.customerPhone}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge 
-                              variant={getStatusVariant(booking.status)} 
-                              className="text-sm px-3 py-1"
-                            >
-                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+          {/* Left Column: Calendar & Upcoming */}
+          <div className="lg:col-span-1 space-y-8">
+            {/* Calendar Widget */}
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="bg-gradient-to-br from-blue-50 to-indigo-50/50 pb-4">
+                <CardTitle className="text-lg flex items-center gap-2 text-blue-900">
+                  <CalendarIcon className="h-5 w-5" />
+                  Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 flex justify-center bg-white">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md"
+                  modifiers={calendarModifiers}
+                  modifiersStyles={calendarModifiersStyles}
+                />
+              </CardContent>
+            </Card>
+
+ 
+            {/* Upcoming Bookings */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Upcoming</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[400px] overflow-y-auto px-6 pb-6 space-y-4">
+                  {sortedDates.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No upcoming bookings</p>
+                    </div>
+                  ) : (
+                    sortedDates.slice(0, 3).map(dateStr => (
+                      <div key={dateStr} className="space-y-3">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky top-0 bg-white py-2">
+                          {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </h4>
+                        {groupedBookings[dateStr].map(booking => (
+                          <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
+                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(booking.service) }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
+                              <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {booking.time}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                              {booking.service}
                             </Badge>
-                            <span className="text-sm font-medium text-gray-700">
-                              {booking.time}
-                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+          
+          </div>
+
+          {/* Right Column: All Bookings Table */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or service..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white border-gray-200 shadow-sm"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="provisional">Provisional</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+ {/* Bookings for Selected Date */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Bookings for Selected Date</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[300px] overflow-y-auto px-6 pb-6 space-y-4">
+                  {(() => {
+                    const selectedDayStr = selectedDate ? selectedDate.toDateString() : '';
+                    const bookingsForDay = bookings.filter(b => b.date.toDateString() === selectedDayStr);
+                    if (!selectedDate) {
+                      return <div className="text-center py-8 text-muted-foreground">Select a date to view bookings.</div>;
+                    }
+                    if (bookingsForDay.length === 0) {
+                      return <div className="text-center py-8 text-muted-foreground">No bookings for this date.</div>;
+                    }
+                    return bookingsForDay.map(booking => (
+                      <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
+                        <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(booking.service) }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                            <Clock className="h-3 w-3" />
+                            {booking.time}
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-                        <span 
-                          className="inline-block text-sm font-semibold px-4 py-1 rounded-full border"
-                          style={{ 
-                            backgroundColor: getServiceColor(booking.service), 
-                            color: 'white',
-                            borderColor: getServiceColor(booking.service),
-                            boxShadow: `0 0 8px ${getServiceColor(booking.service)}`,
-                            letterSpacing: '0.03em',
-                            textShadow: `0 0 2px rgba(0,0,0,0.3)`
-                          }}
-                        >
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                           {booking.service}
-                        </span>
-                        {booking.googleEventId ? (
-                          <a
-                            href={`https://calendar.google.com/calendar/u/0/r/eventedit/${booking.googleEventId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors duration-200"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                            View in Calendar
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center gap-2 text-gray-400 text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            Not synced
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {/* Upcoming Bookings List */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Upcoming Bookings</h2>
-          <div className="space-y-4">
-            {sortedDates.length === 0 ? (
-              <p className="text-muted-foreground">No upcoming bookings</p>
-            ) : (
-              sortedDates.map(dateStr => (
-                <div key={dateStr} className="rounded-lg border border-border bg-card p-4">
-                  <h3 className="font-medium mb-3">{new Date(dateStr).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}</h3>
-                  <div className="space-y-2">
-                    {groupedBookings[dateStr].map(booking => (
-                      <div key={booking.id} className="flex items-center justify-between p-3 bg-accent/50 rounded">
-                        <div>
-                          <p className="font-medium">{booking.customerName}</p>
-                          <p className="text-sm text-muted-foreground">{booking.customerPhone}</p>
-                        </div>
-                        <Badge variant={getStatusVariant(booking.status)}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </Badge>
                       </div>
-                    ))}
-                  </div>
+                    ));
+                  })()}
                 </div>
-              ))
-            )}
+              </CardContent>
+            </Card>
+            {/* Table Card */}
+            <Card className="border-none shadow-md overflow-hidden bg-white">
+              <div className="overflow-x-auto">
+                <DataTable
+                  data={filteredBookings}
+                  columns={columns}
+                  onRowClick={(booking) => {
+                    console.log('Clicked booking:', booking);
+                  }}
+                />
+              </div>
+            </Card>
           </div>
-        </div>
-
-        {/* Bookings Table */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">All Bookings</h2>
-          <DataTable
-            data={filteredBookings}
-            columns={columns}
-            onRowClick={(booking) => {
-              // Handle row click if needed
-              console.log('Clicked booking:', booking);
-            }}
-          />
         </div>
       </div>
     </div>

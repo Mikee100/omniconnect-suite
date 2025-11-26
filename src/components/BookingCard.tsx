@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, User, MapPin, Phone } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, Phone, Check, X } from 'lucide-react';
 import { formatDate } from '@/utils/formatDate';
 
 interface Booking {
@@ -22,70 +22,84 @@ interface BookingCardProps {
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking, onStatusChange }) => {
-  const getStatusColor = (status: Booking['status']) => {
+  const getStatusVariant = (status: Booking['status']) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-500';
+        return 'secondary';
       case 'confirmed':
-        return 'bg-green-500';
+        return 'default';
       case 'cancelled':
-        return 'bg-red-500';
+        return 'destructive';
       default:
-        return 'bg-gray-500';
+        return 'outline';
     }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold">{booking.service}</CardTitle>
-          <Badge className={`${getStatusColor(booking.status)} text-white`}>
-            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+    <Card className="w-full overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+      <CardContent className="p-5">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="font-semibold text-lg text-gray-900">{booking.service}</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+              <User className="w-3.5 h-3.5" />
+              <span>{booking.customerName}</span>
+            </div>
+          </div>
+          <Badge variant={getStatusVariant(booking.status)} className="capitalize">
+            {booking.status}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <User className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium">{booking.customerName}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Calendar className="w-4 h-4 text-gray-500" />
-          <span className="text-sm">{formatDate(booking.date)}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-gray-500" />
-          <span className="text-sm">{booking.time}</span>
-        </div>
-        {booking.location && (
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-4 h-4 text-gray-500" />
-            <span className="text-sm">{booking.location}</span>
+
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-3 text-sm text-gray-600">
+            <div className="flex items-center gap-2 min-w-[100px]">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span>{formatDate(booking.date)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span>{booking.time}</span>
+            </div>
           </div>
-        )}
-        {booking.phone && (
-          <div className="flex items-center space-x-2">
-            <Phone className="w-4 h-4 text-gray-500" />
-            <span className="text-sm">{booking.phone}</span>
-          </div>
-        )}
+
+          {(booking.location || booking.phone) && (
+            <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-3">
+              {booking.location && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span>{booking.location}</span>
+                </div>
+              )}
+              {booking.phone && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  <span>{booking.phone}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {onStatusChange && (
-          <div className="flex space-x-2 pt-3">
+          <div className="flex gap-2 mt-5 pt-4 border-t border-gray-100">
             {booking.status === 'pending' && (
               <>
                 <Button
                   size="sm"
-                  variant="outline"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => onStatusChange(booking.id, 'confirmed')}
                 >
+                  <Check className="w-4 h-4 mr-1.5" />
                   Confirm
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="flex-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                   onClick={() => onStatusChange(booking.id, 'cancelled')}
                 >
+                  <X className="w-4 h-4 mr-1.5" />
                   Cancel
                 </Button>
               </>
@@ -94,9 +108,11 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onStatusChange }) =>
               <Button
                 size="sm"
                 variant="outline"
+                className="w-full hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                 onClick={() => onStatusChange(booking.id, 'cancelled')}
               >
-                Cancel
+                <X className="w-4 h-4 mr-1.5" />
+                Cancel Booking
               </Button>
             )}
           </div>

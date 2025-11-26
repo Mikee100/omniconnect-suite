@@ -1,9 +1,11 @@
+
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import AiPerformanceDashboard from "./pages/AiPerformanceDashboard";
-  
+import QueueDashboard from "./pages/QueueDashboard";
+import MpesaTest from "./pages/MpesaTest";
 import Bookings from "./pages/Bookings";
 import Conversations from "./pages/Conversations";
 import WhatsApp from "./pages/WhatsApp";
@@ -11,6 +13,7 @@ import Instagram from "./pages/Instagram";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Settings from "./pages/Settings";
 import PackagesPage from "./pages/Packages";
+import AIPromptSettings from "./pages/AIPromptSettings";
       <Route
         path="/packages"
         element={
@@ -74,6 +77,26 @@ const AppRouter = () => {
           </ProtectedRoute>
         }
       />
+            <Route
+        path="/mpesa-test"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MpesaTest />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+            <Route
+        path="/queue-dashboard"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <QueueDashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
           <Route
         path="/ai-performance"
         element={
@@ -124,6 +147,16 @@ const AppRouter = () => {
           </ProtectedRoute>
         }
       />
+       <Route
+          path="/ai-prompt-settings"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIPromptSettings />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

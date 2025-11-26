@@ -1,5 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Camera,
+  Clock,
+  Image as ImageIcon,
+  Shirt,
+  Sparkles,
+  BookOpen,
+  Frame,
+  PartyPopper,
+  Scissors
+} from 'lucide-react';
 
 interface Package {
   id: string;
@@ -43,15 +59,17 @@ export default function PackagesPage() {
   const [editing, setEditing] = useState<Partial<Package> | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(false);
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-    
   const fetchPackages = async () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_BASE}/api/bookings/packages`);
       console.log('Fetched packages:', res.data);
-      setPackages(Array.isArray(res.data) ? res.data : []);
+      const data = Array.isArray(res.data) ? res.data : [];
+      // Sort by price ascending
+      data.sort((a: Package, b: Package) => a.price - b.price);
+      setPackages(data);
     } catch (err) {
       setPackages([]);
     }
@@ -92,144 +110,316 @@ export default function PackagesPage() {
 
   const handleSave = async () => {
     if (!editing) return;
-      // Convert numeric fields to numbers
-      const payload = {
-        ...editing,
-        price: editing.price ? Number(editing.price) : 0,
-        deposit: editing.deposit ? Number(editing.deposit) : 0,
-        images: editing.images ? Number(editing.images) : 0,
-        outfits: editing.outfits ? Number(editing.outfits) : 0,
-      };
-      if (isNew) {
-        await axios.post(`${API_BASE}/api/bookings/packages`, payload);
-      } else {
-        await axios.put(`${API_BASE}/api/bookings/packages/${editing.id}`, payload);
-      }
-      setEditing(null);
-      fetchPackages();
+    const payload = {
+      ...editing,
+      price: editing.price ? Number(editing.price) : 0,
+      deposit: editing.deposit ? Number(editing.deposit) : 0,
+      images: editing.images ? Number(editing.images) : 0,
+      outfits: editing.outfits ? Number(editing.outfits) : 0,
+    };
+    if (isNew) {
+      await axios.post(`${API_BASE}/api/bookings/packages`, payload);
+    } else {
+      await axios.put(`${API_BASE}/api/bookings/packages/${editing.id}`, payload);
+    }
+    setEditing(null);
+    fetchPackages();
   };
 
-  return (
-    <div className="max-w-5xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Packages Management</h1>
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
-        >
-          Add Package
-        </button>
+  const FeatureItem = ({ icon: Icon, label, value, included }: { icon: any, label: string, value?: string | number, included?: boolean }) => (
+    <div className={`flex items-center gap-3 text-sm ${included === false ? 'text-gray-400' : 'text-gray-700'}`}>
+      <div className={`p-1.5 rounded-full ${included === false ? 'bg-gray-100' : 'bg-blue-50 text-blue-600'}`}>
+        <Icon size={16} />
       </div>
-      {loading ? (
-        <div className="text-center py-8 text-lg text-gray-500">Loading...</div>
-      ) : packages.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">No packages found.</div>
-      ) : (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-          {packages.map(pkg => (
-            <div
-              key={pkg.id}
-              className="flex flex-col bg-white rounded-lg shadow p-6 border border-gray-200 hover:shadow-lg transition-all mx-auto w-full max-w-xs"
-            >
-              <div className="text-xl font-bold text-blue-700 mb-1">{pkg.name}</div>
-              <div className="text-sm text-gray-500 mb-2">{pkg.type.charAt(0).toUpperCase() + pkg.type.slice(1)} package</div>
-              <div className="text-lg font-semibold text-gray-800 mb-1">KSH {pkg.price}</div>
-              <div className="text-xs text-gray-400 mb-2">Deposit: KSH {pkg.deposit}</div>
-              <div className="flex flex-col gap-1 text-sm text-gray-700 mb-2">
-                <div><span className="font-semibold">Duration:</span> {pkg.duration}</div>
-                <div><span className="font-semibold">Images:</span> {pkg.images}</div>
-                <div><span className="font-semibold">Makeup:</span> {pkg.makeup ? 'Yes' : 'No'}</div>
-                <div><span className="font-semibold">Outfits:</span> {pkg.outfits}</div>
-                <div><span className="font-semibold">Styling:</span> {pkg.styling ? 'Yes' : 'No'}</div>
-                <div><span className="font-semibold">Photobook:</span> {pkg.photobook ? 'Yes' : 'No'}</div>
-                <div><span className="font-semibold">Mount:</span> {pkg.mount ? 'Yes' : 'No'}</div>
-                <div><span className="font-semibold">Balloon:</span> {pkg.balloonBackdrop ? 'Yes' : 'No'}</div>
-                <div><span className="font-semibold">Wig:</span> {pkg.wig ? 'Yes' : 'No'}</div>
-                {pkg.photobookSize && <div><span className="font-semibold">Photobook Size:</span> {pkg.photobookSize}</div>}
-                {pkg.notes && <div className="text-xs text-gray-500 max-w-xs"><span className="font-semibold">Notes:</span> {pkg.notes}</div>}
-              </div>
-              <div className="flex flex-row gap-2 mt-2">
-                <button
-                  onClick={() => handleEdit(pkg)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
-                >Edit</button>
-                <button
-                  onClick={() => handleDelete(pkg.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow"
-                >Delete</button>
-              </div>
-            </div>
-          ))}
-        </div>
+      <span className="flex-1">{label}</span>
+      <span className="font-medium">{value}</span>
+      {included !== undefined && (
+        included ? <Check size={16} className="text-green-500" /> : <X size={16} className="text-gray-300" />
       )}
-      {editing && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-10 w-full max-w-4xl relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
-              onClick={() => setEditing(null)}
-              aria-label="Close"
-            >×</button>
-            <h2 className="text-2xl font-bold mb-6">{isNew ? 'Add New Package' : 'Edit Package'}</h2>
-            <form
-              className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5"
-              onSubmit={e => { e.preventDefault(); handleSave(); }}
-            >
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Package Name</label>
-                <input name="name" value={editing.name || ''} onChange={handleChange} placeholder="Name" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Type</label>
-                <select name="type" value={editing.type || 'studio'} onChange={handleChange} className="border p-2 rounded">
-                  <option value="studio">Studio</option>
-                  <option value="outdoor">Outdoor</option>
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Price (KSH)</label>
-                <input name="price" type="number" value={editing.price || 0} onChange={handleChange} placeholder="Price" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Deposit (KSH)</label>
-                <input name="deposit" type="number" value={editing.deposit || 0} onChange={handleChange} placeholder="Deposit" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Session Duration</label>
-                <input name="duration" value={editing.duration || ''} onChange={handleChange} placeholder="e.g. 2 hrs 30 mins" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Number of Images</label>
-                <input name="images" type="number" value={editing.images || 0} onChange={handleChange} placeholder="Images" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Number of Outfits</label>
-                <input name="outfits" type="number" value={editing.outfits || 0} onChange={handleChange} placeholder="Outfits" required className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-medium mb-1">Photobook Size (if any)</label>
-                <input name="photobookSize" value={editing.photobookSize || ''} onChange={handleChange} placeholder={'e.g. 8x8"'} className="border p-2 rounded" />
-              </div>
-              <div className="flex flex-col justify-end">
-                <label className="flex items-center gap-2"><input name="makeup" type="checkbox" checked={!!editing.makeup} onChange={handleChange} /> Professional Makeup</label>
-                <label className="flex items-center gap-2"><input name="styling" type="checkbox" checked={!!editing.styling} onChange={handleChange} /> Styling Included</label>
-                <label className="flex items-center gap-2"><input name="photobook" type="checkbox" checked={!!editing.photobook} onChange={handleChange} /> Photobook Included</label>
-                <label className="flex items-center gap-2"><input name="mount" type="checkbox" checked={!!editing.mount} onChange={handleChange} /> A3 Mount Included</label>
-                <label className="flex items-center gap-2"><input name="balloonBackdrop" type="checkbox" checked={!!editing.balloonBackdrop} onChange={handleChange} /> Balloon Backdrop</label>
-                <label className="flex items-center gap-2"><input name="wig" type="checkbox" checked={!!editing.wig} onChange={handleChange} /> Styled Wig</label>
-              </div>
-              <div className="md:col-span-3 flex flex-col">
-                <label className="font-medium mb-1">Notes / Description</label>
-                <textarea name="notes" value={editing.notes || ''} onChange={handleChange} placeholder="Notes" className="border p-2 rounded min-h-[60px]" />
-              </div>
-              <div className="md:col-span-3 flex justify-end gap-2 mt-4">
-                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded shadow">Save</button>
-                <button type="button" onClick={() => setEditing(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded">Cancel</button>
-              </div>
-            </form>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50/50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Packages</h1>
+            <p className="text-gray-500 mt-2 text-lg">Manage your photography packages and offerings</p>
           </div>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-medium"
+          >
+            <Plus size={20} />
+            Add New Package
+          </button>
         </div>
-      )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : packages.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Camera size={32} className="text-gray-400" />
+            </div>
+            <h3 className="text-xl font-medium text-gray-900">No packages found</h3>
+            <p className="text-gray-500 mt-2">Get started by creating your first package.</p>
+          </div>
+        ) : (
+          <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+
+                <div className="p-6 flex-1">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 ${pkg.type === 'studio' ? 'bg-purple-50 text-purple-700' : 'bg-orange-50 text-orange-700'
+                        }`}>
+                        {pkg.type.charAt(0).toUpperCase() + pkg.type.slice(1)}
+                      </span>
+                      <h3 className="text-xl font-bold text-gray-900 leading-tight">{pkg.name}</h3>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-medium text-gray-500">KSH</span>
+                      <span className="text-3xl font-bold text-gray-900">{pkg.price.toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Deposit: KSH {pkg.deposit.toLocaleString()}</p>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <FeatureItem icon={Clock} label="Duration" value={pkg.duration} />
+                    <FeatureItem icon={ImageIcon} label="Images" value={pkg.images} />
+                    <FeatureItem icon={Shirt} label="Outfits" value={pkg.outfits} />
+                    <FeatureItem icon={Sparkles} label="Makeup" included={pkg.makeup} />
+                    <FeatureItem icon={Scissors} label="Styling" included={pkg.styling} />
+                    <FeatureItem icon={BookOpen} label="Photobook" included={pkg.photobook} />
+                    {pkg.photobook && pkg.photobookSize && (
+                      <div className="ml-9 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                        Size: {pkg.photobookSize}
+                      </div>
+                    )}
+                    <FeatureItem icon={Frame} label="Mount" included={pkg.mount} />
+                    <FeatureItem icon={PartyPopper} label="Balloon Backdrop" included={pkg.balloonBackdrop} />
+                    <FeatureItem icon={Scissors} label="Wig" included={pkg.wig} />
+                  </div>
+
+                  {pkg.notes && (
+                    <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 mb-4">
+                      <span className="font-medium text-gray-900 block mb-1">Notes:</span>
+                      {pkg.notes}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                  <button
+                    onClick={() => handleEdit(pkg)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-700 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
+                  >
+                    <Edit2 size={16} /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(pkg.id)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 hover:border-red-500 hover:text-red-600 text-gray-700 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
+                  >
+                    <Trash2 size={16} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {editing && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-bold text-gray-900">{isNew ? 'Create New Package' : 'Edit Package'}</h2>
+                <button
+                  onClick={() => setEditing(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={24} className="text-gray-500" />
+                </button>
+              </div>
+
+              <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Package Name</label>
+                      <input
+                        name="name"
+                        value={editing.name || ''}
+                        onChange={handleChange}
+                        placeholder="e.g. Gold Package"
+                        required
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                        <select
+                          name="type"
+                          value={editing.type || 'studio'}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none bg-white"
+                        >
+                          <option value="studio">Studio</option>
+                          <option value="outdoor">Outdoor</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                        <input
+                          name="duration"
+                          value={editing.duration || ''}
+                          onChange={handleChange}
+                          placeholder="e.g. 2 hrs"
+                          required
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Price (KSH)</label>
+                        <input
+                          name="price"
+                          type="number"
+                          value={editing.price || 0}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Deposit (KSH)</label>
+                        <input
+                          name="deposit"
+                          type="number"
+                          value={editing.deposit || 0}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+                        <input
+                          name="images"
+                          type="number"
+                          value={editing.images || 0}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Outfits</label>
+                        <input
+                          name="outfits"
+                          type="number"
+                          value={editing.outfits || 0}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-gray-50 p-6 rounded-xl space-y-4">
+                      <h3 className="font-semibold text-gray-900">Inclusions</h3>
+                      <div className="grid grid-cols-1 gap-3">
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="makeup" type="checkbox" checked={!!editing.makeup} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">Professional Makeup</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="styling" type="checkbox" checked={!!editing.styling} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">Styling Included</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="photobook" type="checkbox" checked={!!editing.photobook} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">Photobook Included</span>
+                        </label>
+                        {editing.photobook && (
+                          <div className="pl-8">
+                            <input
+                              name="photobookSize"
+                              value={editing.photobookSize || ''}
+                              onChange={handleChange}
+                              placeholder="Size (e.g. 8x8)"
+                              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                            />
+                          </div>
+                        )}
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="mount" type="checkbox" checked={!!editing.mount} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">A3 Mount Included</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="balloonBackdrop" type="checkbox" checked={!!editing.balloonBackdrop} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">Balloon Backdrop</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-500 transition-colors">
+                          <input name="wig" type="checkbox" checked={!!editing.wig} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                          <span className="text-gray-700">Styled Wig</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Notes / Description</label>
+                      <textarea
+                        name="notes"
+                        value={editing.notes || ''}
+                        onChange={handleChange}
+                        placeholder="Additional details..."
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(null)}
+                    className="px-6 py-3 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-8 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Save Package
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

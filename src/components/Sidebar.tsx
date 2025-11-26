@@ -12,6 +12,7 @@ import {
   Instagram,
   BarChart,
   Package,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,9 @@ const navigation = [
   { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
   { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
+  { name: 'Queue Dashboard', href: '/queue-dashboard', icon: BarChart },
+  { name: 'AI Prompt Settings', href: '/ai-prompt-settings', icon: Settings },
+  { name: 'Mpesa Test', href: '/mpesa-test', icon: CreditCard },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

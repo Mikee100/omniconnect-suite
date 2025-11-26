@@ -1,3 +1,14 @@
+// Poll booking/payment status for a customerId
+export const pollBookingStatus = async (customerId: string): Promise<{ status: 'pending' | 'confirmed' | 'none', booking?: any }> => {
+  const response = await api.get(`/bookings/status/${customerId}`);
+  return response.data;
+};
+// Update booking draft for a customer
+export const updateBookingDraft = async (customerId: string, updates: any) => {
+  const response = await api.post(`/bookings/draft/${customerId}`, updates);
+  return response.data;
+};
+
 export interface Package {
   id: string;
   name: string;
@@ -93,5 +104,11 @@ export const confirmBooking = async (id: string): Promise<Booking> => {
 
 export const cancelBooking = async (id: string): Promise<Booking> => {
   const response = await api.post(`/bookings/${id}/cancel`);
+  return response.data;
+};
+
+// Get available and unavailable hours for a date (returns [{time, available}])
+export const getAvailableHours = async (date: string, service?: string): Promise<{time: string, available: boolean}[]> => {
+  const response = await api.get(`/bookings/available-hours/${date}`, { params: service ? { service } : {} });
   return response.data;
 };
