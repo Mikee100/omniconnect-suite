@@ -71,6 +71,11 @@ export const getBooking = async (id: string): Promise<Booking> => {
   return response.data;
 };
 
+export const getCustomerBookings = async (customerId: string): Promise<Booking[]> => {
+  const response = await api.get(`/bookings/${customerId}`);
+  return Array.isArray(response.data) ? response.data : response.data.bookings || [];
+};
+
 export const createBooking = async (bookingData: {
   customerId: string;
   customerName?: string;
@@ -108,7 +113,7 @@ export const cancelBooking = async (id: string): Promise<Booking> => {
 };
 
 // Get available and unavailable hours for a date (returns [{time, available}])
-export const getAvailableHours = async (date: string, service?: string): Promise<{time: string, available: boolean}[]> => {
+export const getAvailableHours = async (date: string, service?: string): Promise<{ time: string, available: boolean }[]> => {
   const response = await api.get(`/bookings/available-hours/${date}`, { params: service ? { service } : {} });
   return response.data;
 };

@@ -10,12 +10,35 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Moon, Sun, LogOut, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Moon, Sun, LogOut, User, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme, sidebarCollapsed } = useUIStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Fetch unread count
+    const fetchUnreadCount = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const response = await fetch(`${baseUrl}/api/notifications/unread-count`);
+        const data = await response.json();
+        setUnreadCount(data.count || 0);
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const initials = user?.name
     ?.split(' ')
@@ -26,7 +49,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        'fixed right-0 top-0 z-30 h-16 border-b border-border bg-card transition-all duration-300',
+        'absolute right-0 top-0 z-30 h-16 border-b border-border bg-card transition-all duration-300',
         sidebarCollapsed ? 'left-16' : 'left-64'
       )}
     >
@@ -38,6 +61,24 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          <Link to="/notifications">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-muted-foreground hover:text-foreground"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <Badge
+                  className="absolute -right-1 -top-1 h-5 min-w-5 px-1 flex items-center justify-center bg-primary text-primary-foreground text-xs"
+                  variant="default"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
+            </Button>
+          </Link>
+
           <Button
             variant="ghost"
             size="icon"

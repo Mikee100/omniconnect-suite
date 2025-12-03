@@ -13,6 +13,8 @@ import {
   BarChart,
   Package,
   CreditCard,
+  AlertTriangle,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -21,14 +23,17 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Bookings', href: '/bookings', icon: Calendar },
   { name: 'Conversations', href: '/conversations', icon: MessageSquare },
+  { name: 'Customers', href: '/customers', icon: Users },
   { name: 'WhatsApp', href: '/whatsapp', icon: Phone },
   { name: 'Instagram', href: '/instagram', icon: Instagram },
   { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
   { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
+  { name: 'AI Test Chat', href: '/ai-test-chat', icon: MessageSquare },
   { name: 'Queue Dashboard', href: '/queue-dashboard', icon: BarChart },
   { name: 'AI Prompt Settings', href: '/ai-prompt-settings', icon: Settings },
   { name: 'Mpesa Test', href: '/mpesa-test', icon: CreditCard },
+  { name: 'Escalations', href: '/escalations', icon: AlertTriangle },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -60,7 +65,7 @@ export function Sidebar() {
         </Button>
       </div>
 
-      <nav className="space-y-1 p-2">
+      <nav className="space-y-1 p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 64px)' }}>
         {navigation.map((item) => (
           <NavLink
             key={item.name}

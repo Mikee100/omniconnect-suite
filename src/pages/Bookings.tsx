@@ -20,10 +20,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, Booking as BookingType, Service } from '@/api/bookings';
+import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, Booking as BookingType, Service, Package } from '@/api/bookings';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getPackageColor } from '@/utils/packageColors';
+import { DayContentProps } from 'react-day-picker';
 
 interface Booking {
   id: string;
@@ -60,18 +62,10 @@ export default function Bookings() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Service color map
-  const serviceColors: Record<string, string> = {
-    'Haircut': 'green',
-    'Massage': 'red',
-    'Facial': 'yellow',
-    'Manicure': 'blue',
-    'Pedicure': 'purple',
-    // Add more as needed
+  // Get bookings for a specific date
+  const getBookingsForDate = (date: Date): Booking[] => {
+    return bookings.filter(b => b.date.toDateString() === date.toDateString());
   };
-
-  // Get color for service, default to gray
-  const getServiceColor = (service: string) => serviceColors[service] || 'gray';
 
   useEffect(() => {
     fetchBookings();
@@ -314,28 +308,28 @@ export default function Bookings() {
     }
   };
 
-  // Generate modifiers for calendar based on services
-  const calendarModifiers = Array.isArray(services)
-    ? services.reduce((acc, service) => {
-      acc[service.name] = bookings.filter(b => b.service === service.name).map(b => b.date);
-      return acc;
-    }, {} as Record<string, Date[]>)
-    : {};
+  // Custom day content renderer for calendar - shows colored dots for bookings
+  const renderDayContent = (props: DayContentProps) => {
+    const dayBookings = getBookingsForDate(props.date);
 
-  // Add modifier for any date that has booking(s)
-  calendarModifiers.hasBooking = bookings.map(b => b.date);
-
-  const calendarModifiersStyles = Array.isArray(services)
-    ? services.reduce((acc, service) => {
-      const color = getServiceColor(service.name);
-      acc[service.name] = {
-        backgroundColor: color,
-        color: 'white',
-        fontWeight: 'bold'
-      };
-      return acc;
-    }, {} as Record<string, React.CSSProperties>)
-    : {};
+    return (
+      <div className="relative w-full h-full flex flex-col items-center justify-center">
+        <span>{props.date.getDate()}</span>
+        {dayBookings.length > 0 && (
+          <div className="flex gap-0.5 mt-1 absolute bottom-1">
+            {dayBookings.slice(0, 3).map((booking, idx) => (
+              <div
+                key={`${booking.id}-${idx}`}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: getPackageColor(booking.service) }}
+                title={booking.service}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const columns = [
     {
@@ -352,7 +346,7 @@ export default function Bookings() {
       header: 'Service',
       accessor: 'service' as keyof Booking,
       cell: (row: Booking) => {
-        const color = getServiceColor(row.service);
+        const color = getPackageColor(row.service);
         return (
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -470,7 +464,13 @@ export default function Bookings() {
                       {Array.isArray(packages) && packages.map((pkg) => (
                         <SelectItem key={pkg.id} value={pkg.id}>
                           <div className="flex items-center justify-between w-full gap-2">
-                            <span>{pkg.name}</span>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: getPackageColor(pkg.name) }}
+                              />
+                              <span>{pkg.name}</span>
+                            </div>
                             <span className="text-muted-foreground text-sm">{pkg.price}</span>
                           </div>
                         </SelectItem>
@@ -564,13 +564,12 @@ export default function Bookings() {
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   className="rounded-md"
-                  modifiers={calendarModifiers}
-                  modifiersStyles={calendarModifiersStyles}
+                  dayContent={renderDayContent}
                 />
               </CardContent>
             </Card>
 
- 
+
             {/* Upcoming Bookings */}
             <Card className="border-none shadow-md">
               <CardHeader className="pb-3">
@@ -590,7 +589,7 @@ export default function Bookings() {
                         </h4>
                         {groupedBookings[dateStr].map(booking => (
                           <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
-                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(booking.service) }} />
+                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
                               <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
@@ -610,7 +609,7 @@ export default function Bookings() {
               </CardContent>
             </Card>
 
-          
+
           </div>
 
           {/* Right Column: All Bookings Table */}
@@ -643,7 +642,7 @@ export default function Bookings() {
               </Select>
             </div>
 
- {/* Bookings for Selected Date */}
+            {/* Bookings for Selected Date */}
             <Card className="border-none shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Bookings for Selected Date</CardTitle>
@@ -661,7 +660,7 @@ export default function Bookings() {
                     }
                     return bookingsForDay.map(booking => (
                       <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
-                        <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(booking.service) }} />
+                        <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
                           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">

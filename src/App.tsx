@@ -8,12 +8,15 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
 import Conversations from "./pages/Conversations";
+import Customers from "./pages/Customers";
+import CustomerDetailsPage from "./pages/CustomerDetailsPage";
 import WhatsApp from "./pages/WhatsApp";
 import Instagram from "./pages/Instagram";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Escalations from "./pages/Escalations";
 import { useAuthStore } from "./state/authStore";
 
 
@@ -64,6 +67,26 @@ const App = () => {
               }
             />
             <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Customers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/:customerId"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CustomerDetailsPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/whatsapp"
               element={
                 <ProtectedRoute>
@@ -99,6 +122,16 @@ const App = () => {
                 <ProtectedRoute>
                   <Layout>
                     <Settings />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/escalations"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Escalations />
                   </Layout>
                 </ProtectedRoute>
               }

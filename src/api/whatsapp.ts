@@ -73,6 +73,8 @@ export const sendWhatsAppMessage = (data: { to: string; message: string }) =>
 export const getWhatsAppMessages = (customerId?: string) =>
   api.get(`/whatsapp/messages?customerId=${customerId || ''}`);
 export const getWhatsAppConversations = () => api.get('/whatsapp/conversations');
-export const toggleCustomerAi = (customerId: string, enabled: boolean) =>
-  api.post('/customers/toggle-ai', { customerId, enabled });
+export const toggleCustomerAi = async (id: string, enabled: boolean) => {
+  const response = await api.patch(`/customers/${id}/toggle-ai`, { enabled });
+  return response.data;
+};
 export const getWhatsAppStats = () => api.get('/whatsapp/stats');

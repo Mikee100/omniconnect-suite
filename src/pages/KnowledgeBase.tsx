@@ -1,43 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface KBEntry {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-}
-
-const mockEntries: KBEntry[] = [
-  {
-    id: '1',
-    question: 'What are your business hours?',
-    answer: 'We are open Monday to Friday from 9 AM to 6 PM, and Saturday from 10 AM to 4 PM.',
-    category: 'General',
-  },
-  {
-    id: '2',
-    question: 'How do I cancel my booking?',
-    answer: 'You can cancel your booking up to 24 hours before your appointment by contacting us or using our online portal.',
-    category: 'Bookings',
-  },
-  {
-    id: '3',
-    question: 'What is your refund policy?',
-    answer: 'Full refunds are available for cancellations made more than 48 hours in advance. Cancellations within 48 hours are subject to a 50% fee.',
-    category: 'Policies',
-  },
-];
+import { knowledgeBaseApi, KBEntry } from '@/api/knowledgeBase';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function KnowledgeBase() {
-  const [entries, setEntries] = useState(mockEntries);
+  const [entries, setEntries] = useState<KBEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<KBEntry | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,13 +21,31 @@ export default function KnowledgeBase() {
     answer: '',
     category: '',
   });
+  const { toast } = useToast();
 
-  const filteredEntries = entries.filter(
-    (entry) =>
-      entry.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchEntries = async () => {
+    setLoading(true);
+    try {
+      const data = await knowledgeBaseApi.getAll({ search: searchTerm });
+      setEntries(data.items);
+    } catch (error) {
+      console.error('Failed to fetch entries', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load knowledge base entries',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      fetchEntries();
+    }, 500);
+    return () => clearTimeout(debounce);
+  }, [searchTerm]);
 
   const handleCreateNew = () => {
     setSelectedEntry(null);
@@ -70,19 +63,55 @@ export default function KnowledgeBase() {
     });
   };
 
-  const handleSave = () => {
-    // TODO: Save via API
-    setIsEditing(false);
-    setSelectedEntry(null);
-    setFormData({ question: '', answer: '', category: '' });
+  const handleSave = async () => {
+    if (!formData.question || !formData.answer) {
+      toast({
+        title: 'Validation Error',
+        description: 'Question and Answer are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      if (selectedEntry) {
+        await knowledgeBaseApi.update(selectedEntry.id, formData);
+        toast({ title: 'Success', description: 'Entry updated successfully' });
+      } else {
+        await knowledgeBaseApi.create(formData);
+        toast({ title: 'Success', description: 'Entry created successfully' });
+      }
+      setIsEditing(false);
+      setSelectedEntry(null);
+      setFormData({ question: '', answer: '', category: '' });
+      fetchEntries();
+    } catch (error) {
+      console.error('Failed to save entry', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save entry',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    // TODO: Delete via API
-    setEntries(entries.filter((e) => e.id !== id));
-    if (selectedEntry?.id === id) {
-      setSelectedEntry(null);
-      setIsEditing(false);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+    try {
+      await knowledgeBaseApi.delete(id);
+      toast({ title: 'Success', description: 'Entry deleted successfully' });
+      if (selectedEntry?.id === id) {
+        setSelectedEntry(null);
+        setIsEditing(false);
+      }
+      fetchEntries();
+    } catch (error) {
+      console.error('Failed to delete entry', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete entry',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -115,30 +144,40 @@ export default function KnowledgeBase() {
               />
             </div>
             <ScrollArea className="h-[600px]">
-              <div className="space-y-2">
-                {filteredEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    onClick={() => {
-                      setSelectedEntry(entry);
-                      setIsEditing(false);
-                    }}
-                    className={cn(
-                      'cursor-pointer rounded-lg border border-border p-3 transition-colors hover:bg-accent',
-                      selectedEntry?.id === entry.id && 'bg-accent'
-                    )}
-                  >
-                    <div className="mb-1 flex items-start justify-between">
-                      <span className="text-xs font-medium text-primary">
-                        {entry.category}
-                      </span>
+              {loading ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : entries.length === 0 ? (
+                <div className="text-center p-4 text-muted-foreground text-sm">
+                  No entries found.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {entries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      onClick={() => {
+                        setSelectedEntry(entry);
+                        setIsEditing(false);
+                      }}
+                      className={cn(
+                        'cursor-pointer rounded-lg border border-border p-3 transition-colors hover:bg-accent',
+                        selectedEntry?.id === entry.id && 'bg-accent'
+                      )}
+                    >
+                      <div className="mb-1 flex items-start justify-between">
+                        <span className="text-xs font-medium text-primary">
+                          {entry.category}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-foreground line-clamp-2">
+                        {entry.question}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-foreground line-clamp-2">
-                      {entry.question}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -222,7 +261,7 @@ export default function KnowledgeBase() {
                     </div>
                     <div>
                       <Label>Answer</Label>
-                      <p className="mt-2 text-muted-foreground">
+                      <p className="mt-2 text-muted-foreground whitespace-pre-wrap">
                         {selectedEntry.answer}
                       </p>
                     </div>

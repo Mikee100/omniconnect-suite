@@ -71,7 +71,8 @@ export default function WhatsApp() {
     const loadConversations = async () => {
       try {
         const response = await getWhatsAppConversations();
-        setConversations(Array.isArray(response.conversations) ? response.conversations : []);
+        const conversations = response.data?.conversations;
+        setConversations(Array.isArray(conversations) ? conversations : []);
       } catch (error) {
         console.error('Failed to load conversations:', error);
         // Show empty array if API fails
@@ -93,8 +94,9 @@ export default function WhatsApp() {
       if (selectedCustomerId) {
         const loadConversationMessages = async () => {
           try {
-            const response = await getWhatsAppMessages({ customerId: selectedCustomerId });
-            setMessages(response.messages);
+            const response = await getWhatsAppMessages(selectedCustomerId);
+            const messages = response?.data?.messages;
+            setMessages(Array.isArray(messages) ? messages : []);
           } catch (error) {
             console.error('Failed to load conversation messages:', error);
           }
@@ -111,7 +113,7 @@ export default function WhatsApp() {
     if (selectedCustomerId) {
       const loadConversationMessages = async () => {
         try {
-          const response = await getWhatsAppMessages({ customerId: selectedCustomerId });
+          const response = await getWhatsAppMessages(selectedCustomerId);
           setMessages(response.messages);
 
           // Load customer AI status
@@ -120,13 +122,17 @@ export default function WhatsApp() {
 
           // Check if we should show typing indicator
           // Show typing if the last message is from user (inbound) and no recent AI response
-          const lastMessage = response.messages[response.messages.length - 1];
+          const messages = response?.data?.messages;
+          const safeMessages = Array.isArray(messages) ? messages : [];
+          setMessages(safeMessages);
+
+          const lastMessage = safeMessages[safeMessages.length - 1];
           if (lastMessage && lastMessage.direction === 'inbound') {
             const messageTime = new Date(lastMessage.timestamp).getTime();
             const now = Date.now();
             const timeDiff = now - messageTime;
             // Show typing for up to 30 seconds after user message if no AI response
-            setIsTyping(timeDiff < 30000 && !response.messages.some(m =>
+            setIsTyping(timeDiff < 30000 && !safeMessages.some(m =>
               m.direction === 'outbound' &&
               new Date(m.timestamp).getTime() > messageTime
             ));
@@ -183,11 +189,11 @@ export default function WhatsApp() {
   const { toast } = useToast();
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() && selectedRecipient) {
+    if (newMessage.trim() && selectedRecipient.trim()) {
       setIsTyping(true);
       try {
         // Send message via API
-        await sendWhatsAppMessage(selectedRecipient, newMessage);
+        await sendWhatsAppMessage({ to: selectedRecipient, message: newMessage });
 
         // Add to local messages list
         const message: WhatsAppMessage = {
@@ -207,11 +213,12 @@ export default function WhatsApp() {
           title: 'Message sent',
           description: 'Your message has been sent successfully.',
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to send message:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'There was an error sending your message. Please try again.';
         toast({
           title: 'Failed to send message',
-          description: 'There was an error sending your message. Please try again.',
+          description: errorMessage,
           variant: 'destructive',
         });
       } finally {
@@ -254,10 +261,10 @@ export default function WhatsApp() {
   };
 
   return (
-    <div className="w-full h-[110vh] flex flex-col bg-[#111b21] dark:bg-[#111b21] rounded-xl shadow overflow-hidden">
+    <div className="w-full h-[150vh] flex flex-col bg-[#111b21] dark:bg-[#111b21] rounded-xl shadow overflow-hidden">
       <div className="flex flex-1 min-h-0">
         {/* Conversations List */}
-        <div className="w-full lg:w-[300px] bg-[#202c33] border-r border-[#222c2a] flex flex-col min-h-0">
+        <div className=" w-[200px] lg:w-[220px] bg-[#202c33] border-r border-[#222c2a] flex flex-col min-h-0">
           <div className="px-3 py-2 border-b border-[#222c2a] flex items-center gap-2 bg-[#202c33] flex-shrink-0">
             <MessageSquare className="h-4 w-4 text-[#25d366]" />
             <span className="text-base font-semibold text-white">Chats</span>
@@ -268,12 +275,14 @@ export default function WhatsApp() {
                 <div className="text-center text-muted-foreground py-6 text-white/60 text-xs">No conversations</div>
               )}
               {(conversations || []).map((conversation) => {
-                const isActive = selectedRecipient === conversation.phone;
+                const isActive = selectedRecipient === (conversation.phone || conversation.customerId);
+                const displayName = conversation.customerName || 'Unknown';
+                const displayPhone = conversation.phone ? formatPhoneNumber(conversation.phone) : displayName;
                 return (
                   <div
                     key={conversation.customerId}
                     onClick={() => {
-                      setSelectedRecipient(conversation.phone);
+                      setSelectedRecipient(conversation.phone || conversation.customerId);
                       setSelectedCustomerId(conversation.customerId);
                     }}
                     className={cn(
@@ -284,13 +293,13 @@ export default function WhatsApp() {
                   >
                     <Avatar className="h-8 w-8 shadow">
                       <AvatarFallback className="bg-[#25d366] text-white font-bold text-xs">
-                        {conversation.customerName.charAt(0).toUpperCase()}
+                        {displayName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={cn('font-medium truncate text-sm', isActive ? 'text-white' : 'text-white/90')}>
-                          {formatPhoneNumber(conversation.phone)}
+                          {displayPhone}
                         </span>
                         <span className="text-[10px] text-[#8696a0] ml-2 whitespace-nowrap">
                           {conversation.latestTimestamp ? new Date(conversation.latestTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -335,8 +344,9 @@ export default function WhatsApp() {
                     variant="outline"
                     size="sm"
                     onClick={async () => {
+                      console.log('clicked');
                       try {
-                        const result = await toggleCustomerAi(selectedCustomerId);
+                        const result = await toggleCustomerAi(selectedCustomerId, !(customerAiEnabled ?? false));
                         setCustomerAiEnabled(result.aiEnabled);
                         toast({
                           title: 'AI toggled',
@@ -366,7 +376,7 @@ export default function WhatsApp() {
                   onScroll={handleChatScroll}
                 >
                   <div className="flex flex-col gap-1 pb-6">
-                    {messages.map((message) => (
+                    {(messages || []).map((message) => (
                       <div
                         key={message.id}
                         className={cn(
