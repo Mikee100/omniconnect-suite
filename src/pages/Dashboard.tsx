@@ -1,51 +1,48 @@
-
 import React, { useState } from 'react';
 import OverviewTab from '@/components/OverviewTab';
 import WhatsAppTab from '@/components/WhatsAppTab';
 import InstagramTab from '@/components/InstagramTab';
 import FacebookTab from '@/components/FacebookTab';
-
+import { PageHeader } from '@/components/PageHeader';
+import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'whatsapp' | 'instagram' | 'facebook'>('overview');
 
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'whatsapp' as const, label: 'WhatsApp' },
+    { id: 'instagram' as const, label: 'Instagram' },
+    { id: 'facebook' as const, label: 'Facebook' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your business automation metrics
-        </p>
+    <div className="space-y-6 animate-fadeIn">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your business automation metrics"
+      />
+
+      {/* Segmented Control Tabs */}
+      <div className="bg-muted/30 p-1 rounded-lg inline-flex gap-1 flex-wrap animate-slideIn">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'px-4 sm:px-6 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 tap-target',
+              activeTab === tab.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex space-x-2 border-b mb-4">
-        <button
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-primary'}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'whatsapp' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-primary'}`}
-          onClick={() => setActiveTab('whatsapp')}
-        >
-          WhatsApp
-        </button>
-        <button
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'instagram' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-primary'}`}
-          onClick={() => setActiveTab('instagram')}
-        >
-          Instagram
-        </button>
-        <button
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'facebook' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-primary'}`}
-          onClick={() => setActiveTab('facebook')}
-        >
-          Facebook
-        </button>
-      </div>
-
-      <div>
+      {/* Tab Content */}
+      <div className="animate-fadeIn" key={activeTab}>
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'whatsapp' && <WhatsAppTab />}
         {activeTab === 'instagram' && <InstagramTab />}
@@ -54,4 +51,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

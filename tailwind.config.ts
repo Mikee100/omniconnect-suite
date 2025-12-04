@@ -69,14 +69,27 @@ export default {
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-subtle': 'var(--gradient-subtle)',
+        'gradient-card': 'var(--gradient-card)',
       },
       boxShadow: {
         'soft': 'var(--shadow-soft)',
         'medium': 'var(--shadow-medium)',
         'large': 'var(--shadow-large)',
+        'xl': 'var(--shadow-xl)',
       },
       transitionProperty: {
         'smooth': 'var(--transition-smooth)',
+        'fast': 'var(--transition-fast)',
+        'slow': 'var(--transition-slow)',
+      },
+      spacing: {
+        'xs': 'var(--spacing-xs)',
+        'sm': 'var(--spacing-sm)',
+        'md': 'var(--spacing-md)',
+        'lg': 'var(--spacing-lg)',
+        'xl': 'var(--spacing-xl)',
+        '2xl': 'var(--spacing-2xl)',
+        '3xl': 'var(--spacing-3xl)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -100,10 +113,59 @@ export default {
             height: "0",
           },
         },
+        "fadeIn": {
+          from: {
+            opacity: "0",
+          },
+          to: {
+            opacity: "1",
+          },
+        },
+        "slideIn": {
+          from: {
+            transform: "translateY(10px)",
+            opacity: "0",
+          },
+          to: {
+            transform: "translateY(0)",
+            opacity: "1",
+          },
+        },
+        "scaleIn": {
+          from: {
+            transform: "scale(0.95)",
+            opacity: "0",
+          },
+          to: {
+            transform: "scale(1)",
+            opacity: "1",
+          },
+        },
+        "slideInFromLeft": {
+          from: {
+            transform: "translateX(-100%)",
+          },
+          to: {
+            transform: "translateX(0)",
+          },
+        },
+        "slideOutToLeft": {
+          from: {
+            transform: "translateX(0)",
+          },
+          to: {
+            transform: "translateX(-100%)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fadeIn": "fadeIn 0.3s ease-in-out",
+        "slideIn": "slideIn 0.3s ease-out",
+        "scaleIn": "scaleIn 0.2s ease-out",
+        "slideInFromLeft": "slideInFromLeft 0.3s ease-out",
+        "slideOutToLeft": "slideOutToLeft 0.3s ease-in",
       },
     },
   },

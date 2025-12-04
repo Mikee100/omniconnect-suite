@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCustomer, getCustomerMessages, toggleCustomerAi } from '../api/customers';
+import { getCustomer, getCustomerMessages, toggleCustomerAi, getCustomerPhotoLinks, PhotoLink } from '../api/customers';
 import { getCustomerBookings, Booking } from '../api/bookings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,10 +22,12 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import SendPhotoLinkCard from '../components/ui/SendPhotoLinkCard';
 
 const CustomerDetailsPage = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+
 
   const { data: customer, isLoading: customerLoading, refetch: refetchCustomer } = useQuery({
     queryKey: ['customer', customerId],
@@ -42,6 +44,12 @@ const CustomerDetailsPage = () => {
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ['customer-bookings', customerId],
     queryFn: () => getCustomerBookings(customerId!),
+    enabled: !!customerId,
+  });
+
+  const { data: photoLinks, isLoading: photoLinksLoading } = useQuery({
+    queryKey: ['customer-photo-links', customerId],
+    queryFn: () => getCustomerPhotoLinks(customerId!),
     enabled: !!customerId,
   });
 
@@ -209,7 +217,58 @@ const CustomerDetailsPage = () => {
             </CardContent>
           </Card>
 
-        
+          <SendPhotoLinkCard customerId={customer.id} />
+
+          {/* Photo Links Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                Photo Links
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {photoLinksLoading ? (
+                <div className="flex items-center justify-center h-24">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : photoLinks?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-sm">No photo links sent yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {photoLinks?.map((photoLink) => (
+                    <div
+                      key={photoLink.id}
+                      className="p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <a
+                            href={photoLink.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-sm text-primary hover:underline break-all"
+                          >
+                            {photoLink.link}
+                          </a>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(photoLink.sentAt), 'MMM d, yyyy • h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
 
         {/* Right Column - Conversation History */}

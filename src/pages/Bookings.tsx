@@ -422,7 +422,7 @@ export default function Bookings() {
                 New Booking
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl">Create New Booking</DialogTitle>
               </DialogHeader>

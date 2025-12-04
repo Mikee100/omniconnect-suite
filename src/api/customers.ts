@@ -47,3 +47,19 @@ export const toggleCustomerAi = async (id: string, enabled: boolean): Promise<Cu
     const response = await api.patch(`/customers/${id}/toggle-ai`, { enabled });
     return response.data;
 };
+
+export const sendPhotoLink = async (customerId: string, link: string): Promise<void> => {
+  await api.post(`/customers/${customerId}/send-photo-link`, { link });
+};
+
+export interface PhotoLink {
+  id: string;
+  link: string;
+  sentAt: string;
+  customerId: string;
+}
+
+export const getCustomerPhotoLinks = async (customerId: string): Promise<PhotoLink[]> => {
+  const response = await api.get(`/customers/${customerId}/photo-links`);
+  return response.data;
+};
