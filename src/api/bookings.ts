@@ -1,3 +1,7 @@
+import { useApi } from '@/hooks/useApi';
+
+const api = useApi();
+
 // Poll booking/payment status for a customerId
 export const pollBookingStatus = async (customerId: string): Promise<{ status: 'pending' | 'confirmed' | 'none', booking?: any }> => {
   const response = await api.get(`/bookings/status/${customerId}`);
@@ -32,9 +36,6 @@ export const getPackages = async (): Promise<Package[]> => {
   const response = await api.get('/bookings/packages');
   return Array.isArray(response.data) ? response.data : [];
 };
-import { useApi } from '@/hooks/useApi';
-
-const api = useApi();
 
 export interface Booking {
   id: string;
@@ -115,5 +116,11 @@ export const cancelBooking = async (id: string): Promise<Booking> => {
 // Get available and unavailable hours for a date (returns [{time, available}])
 export const getAvailableHours = async (date: string, service?: string): Promise<{ time: string, available: boolean }[]> => {
   const response = await api.get(`/bookings/available-hours/${date}`, { params: service ? { service } : {} });
+  return response.data;
+};
+
+// Get calendar events
+export const getCalendarEvents = async (timeMin?: string, timeMax?: string): Promise<any[]> => {
+  const response = await api.get('/calendar/events', { params: { timeMin, timeMax } });
   return response.data;
 };

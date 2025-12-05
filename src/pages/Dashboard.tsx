@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import OverviewTab from '@/components/OverviewTab';
 import WhatsAppTab from '@/components/WhatsAppTab';
 import InstagramTab from '@/components/InstagramTab';
-import FacebookTab from '@/components/FacebookTab';
+import MessengerTab from '@/components/MessengerTab';
 import { PageHeader } from '@/components/PageHeader';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'whatsapp' | 'instagram' | 'facebook'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'whatsapp' | 'instagram' | 'messenger'>('overview');
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview' },
     { id: 'whatsapp' as const, label: 'WhatsApp' },
     { id: 'instagram' as const, label: 'Instagram' },
-    { id: 'facebook' as const, label: 'Facebook' },
+    { id: 'messenger' as const, label: 'Messenger' },
   ];
 
   return (
@@ -46,7 +46,7 @@ export default function Dashboard() {
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'whatsapp' && <WhatsAppTab />}
         {activeTab === 'instagram' && <InstagramTab />}
-        {activeTab === 'facebook' && <FacebookTab />}
+        {activeTab === 'messenger' && <MessengerTab />}
       </div>
     </div>
   );

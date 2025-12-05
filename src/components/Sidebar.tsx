@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Bookings', href: '/bookings', icon: Calendar },
   { name: 'Customers', href: '/customers', icon: Users },
   { name: 'WhatsApp', href: '/whatsapp', icon: Phone },
+  { name: 'Instagram', href: '/instagram', icon: Instagram },
   { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
   { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
@@ -71,9 +72,9 @@ export function Sidebar() {
         className={cn(
           'fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-40',
           // Desktop behavior
-          isDesktop && (sidebarCollapsed ? 'w-16' : 'w-64'),
+          isDesktop && (sidebarCollapsed ? 'w-16' : 'w-48'),
           // Mobile behavior
-          !isDesktop && 'w-64',
+          !isDesktop && 'w-48',
           !isDesktop && (showSidebar ? 'translate-x-0' : '-translate-x-full'),
           // Shadow for mobile overlay
           !isDesktop && 'shadow-xl'
@@ -152,9 +153,9 @@ export function Sidebar() {
         {/* Footer - User info or branding could go here */}
         {!sidebarCollapsed && (
           <div className="p-4 border-t border-border">
-            <div className="text-xs text-muted-foreground text-center animate-fadeIn">
-              © 2024 Business Admin
-            </div>
+              <div className="text-xs text-muted-foreground text-center animate-fadeIn">
+                © {new Date().getFullYear()} Business Admin
+              </div>
           </div>
         )}
       </aside>

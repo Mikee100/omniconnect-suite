@@ -7,7 +7,7 @@ import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
-import Conversations from "./pages/Conversations";
+import ConversationsPage from "./pages/Conversations";
 import Customers from "./pages/Customers";
 import CustomerDetailsPage from "./pages/CustomerDetailsPage";
 import WhatsApp from "./pages/WhatsApp";
@@ -61,7 +61,7 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Conversations />
+                    <ConversationsPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -136,6 +136,9 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/conversations" element={<ConversationsPage />} />
+            <Route path="/customers" element={<Customers />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,245 +1,324 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Search, Send, Phone, MessageSquare, MessageCircle,
+  MoreVertical, CheckCheck, Clock, User
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { conversationsApi, Conversation, Message } from '@/api/conversations';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Send } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-interface Conversation {
-  id: string;
-  customerName: string;
-  platform: 'whatsapp' | 'instagram' | 'messenger' | 'telegram';
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-}
+const ConversationsPage = () => {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedChat, setSelectedChat] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-interface Message {
-  id: string;
-  sender: 'customer' | 'agent';
-  text: string;
-  timestamp: string;
-}
+  useEffect(() => {
+    loadConversations();
+    // Set up polling interval for real-time updates (placeholder for WebSocket)
+    const interval = setInterval(loadConversations, 10000);
+    return () => clearInterval(interval);
+  }, [filter]);
 
-const mockConversations: Conversation[] = [
-  {
-    id: '1',
-    customerName: 'Sarah Johnson',
-    platform: 'whatsapp',
-    lastMessage: 'Thanks for the information!',
-    timestamp: '2 min ago',
-    unread: 0,
-  },
-  {
-    id: '2',
-    customerName: 'Mike Chen',
-    platform: 'instagram',
-    lastMessage: 'Can I reschedule my appointment?',
-    timestamp: '15 min ago',
-    unread: 2,
-  },
-  {
-    id: '3',
-    customerName: 'Emma Wilson',
-    platform: 'messenger',
-    lastMessage: 'What are your opening hours?',
-    timestamp: '1 hour ago',
-    unread: 1,
-  },
-];
+  useEffect(() => {
+    if (selectedChat) {
+      loadMessages(selectedChat.id);
+    }
+  }, [selectedChat]);
 
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    sender: 'customer',
-    text: 'Hi, I would like to book an appointment',
-    timestamp: '10:30 AM',
-  },
-  {
-    id: '2',
-    sender: 'agent',
-    text: 'Hello! I would be happy to help you with that. What service are you interested in?',
-    timestamp: '10:31 AM',
-  },
-  {
-    id: '3',
-    sender: 'customer',
-    text: 'I need a haircut and styling',
-    timestamp: '10:32 AM',
-  },
-  {
-    id: '4',
-    sender: 'agent',
-    text: 'Great! We have availability this week. What day works best for you?',
-    timestamp: '10:33 AM',
-  },
-];
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-export default function Conversations() {
-  const [selectedConv, setSelectedConv] = useState<string>(mockConversations[0].id);
-  const [message, setMessage] = useState('');
-
-  const getPlatformColor = (platform: Conversation['platform']) => {
-    switch (platform) {
-      case 'whatsapp':
-        return 'bg-green-500';
-      case 'instagram':
-        return 'bg-pink-500';
-      case 'messenger':
-        return 'bg-blue-500';
-      case 'telegram':
-        return 'bg-sky-500';
+  const loadConversations = async () => {
+    try {
+      const platform = filter !== 'all' ? filter : undefined;
+      const data = await conversationsApi.getAll(platform);
+      setConversations(data);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // TODO: Send message via API
-      setMessage('');
+  const loadMessages = async (customerId: string) => {
+    setMessagesLoading(true);
+    try {
+      const data = await conversationsApi.getMessages(customerId);
+      setMessages(data);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setMessagesLoading(false);
     }
+  };
+
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedChat || !replyText.trim()) return;
+
+    setSending(true);
+    try {
+      const newMessage = await conversationsApi.sendReply(
+        selectedChat.id,
+        replyText,
+        selectedChat.platform
+      );
+
+      // Add message locally immediately
+      setMessages([...messages, newMessage]);
+      setReplyText('');
+
+      // Update conversations list to show latest message
+      loadConversations();
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'whatsapp': return <Phone className="h-4 w-4 text-green-500" />;
+      case 'instagram': return <MessageSquare className="h-4 w-4 text-purple-500" />;
+      case 'messenger': return <MessageCircle className="h-4 w-4 text-blue-500" />;
+      default: return <MessageSquare className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const filteredConversations = conversations.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phone && c.phone.includes(searchTerm))
+  );
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    return isToday ? formatTime(dateString) : date.toLocaleDateString();
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Conversations</h1>
-        <p className="text-muted-foreground">
-          Manage customer conversations across all platforms
-        </p>
-      </div>
+    <div className="flex h-[calc(100vh-6rem)] gap-4 animate-fadeIn">
+      {/* Sidebar - Conversation List */}
+      <Card className="w-80 flex flex-col overflow-hidden border-r bg-background">
+        <div className="p-4 border-b space-y-4">
+          <h2 className="text-xl font-bold">Conversations</h2>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Conversations List */}
-        <Card className="lg:col-span-1 shadow-soft">
-          <CardContent className="p-4">
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search conversations..." className="pl-10" />
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <Tabs defaultValue="all" value={filter} onValueChange={setFilter} className="w-full">
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="whatsapp" title="WhatsApp">WA</TabsTrigger>
+              <TabsTrigger value="instagram" title="Instagram">IG</TabsTrigger>
+              <TabsTrigger value="messenger" title="Messenger">FB</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <ScrollArea className="flex-1">
+          {conversations.length === 0 && !loading ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No conversations found
             </div>
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-2">
-                {mockConversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => setSelectedConv(conv.id)}
-                    className={cn(
-                      'flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-colors hover:bg-accent',
-                      selectedConv === conv.id && 'bg-accent'
-                    )}
-                  >
-                    <div className="relative">
-                      <Avatar>
-                        <AvatarFallback>
-                          {conv.customerName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className={cn(
-                          'absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card',
-                          getPlatformColor(conv.platform)
-                        )}
-                      />
+          ) : (
+            <div className="flex flex-col">
+              {filteredConversations.map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => setSelectedChat(chat)}
+                  className={cn(
+                    "flex items-start gap-3 p-4 text-left transition-colors hover:bg-muted/50 border-b last:border-0",
+                    selectedChat?.id === chat.id && "bg-muted"
+                  )}
+                >
+                  <Avatar>
+                    <AvatarFallback className={cn(
+                      "text-white",
+                      chat.platform === 'whatsapp' ? 'bg-green-500' :
+                        chat.platform === 'instagram' ? 'bg-purple-500' :
+                          chat.platform === 'messenger' ? 'bg-blue-500' : 'bg-gray-500'
+                    )}>
+                      {chat.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold truncate">{chat.name}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDate(chat.lastMessageAt)}
+                      </span>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-foreground">
-                          {conv.customerName}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {conv.timestamp}
-                        </span>
-                      </div>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {conv.lastMessage}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground truncate max-w-[140px]">
+                        {chat.lastMessageDirection === 'outbound' && 'You: '}
+                        {chat.lastMessage}
                       </p>
+                      {getPlatformIcon(chat.platform)}
                     </div>
-                    {conv.unread > 0 && (
-                      <Badge variant="default" className="ml-auto">
-                        {conv.unread}
-                      </Badge>
-                    )}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </Card>
 
-        {/* Chat Window */}
-        <Card className="lg:col-span-2 shadow-soft">
-          <CardContent className="flex h-[700px] flex-col p-0">
+      {/* Main Content - Chat View */}
+      <Card className="flex-1 flex flex-col overflow-hidden bg-background">
+        {selectedChat ? (
+          <>
             {/* Chat Header */}
-            <div className="border-b border-border p-4">
+            <div className="p-4 border-b flex items-center justify-between bg-card">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarFallback>SJ</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {selectedChat.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-foreground">Sarah Johnson</h3>
-                  <p className="text-sm text-muted-foreground">WhatsApp</p>
+                  <h3 className="font-semibold flex items-center gap-2">
+                    {selectedChat.name}
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {selectedChat.platform}
+                    </Badge>
+                  </h3>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    {selectedChat.phone || selectedChat.instagramId || selectedChat.messengerId}
+                    {selectedChat.isActive && (
+                      <span className="flex items-center text-green-500 ml-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse" />
+                        Active
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
             </div>
 
-            {/* Messages */}
+            {/* Chat Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {mockMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      'flex',
-                      msg.sender === 'agent' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'max-w-[70%] rounded-lg px-4 py-2',
-                        msg.sender === 'agent'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground'
-                      )}
-                    >
-                      <p className="text-sm">{msg.text}</p>
-                      <p
+                {messagesLoading ? (
+                  <div className="flex justify-center p-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  messages.map((msg, index) => {
+                    const isOutbound = msg.direction === 'outbound';
+                    const isFirstInSequence = index === 0 || messages[index - 1].direction !== msg.direction;
+
+                    return (
+                      <div
+                        key={msg.id}
                         className={cn(
-                          'mt-1 text-xs',
-                          msg.sender === 'agent'
-                            ? 'text-primary-foreground/70'
-                            : 'text-muted-foreground'
+                          "flex w-full mb-2",
+                          isOutbound ? "justify-end" : "justify-start"
                         )}
                       >
-                        {msg.timestamp}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                        <div
+                          className={cn(
+                            "max-w-[70%] px-4 py-2 rounded-2xl text-sm relative group",
+                            isOutbound
+                              ? "bg-primary text-primary-foreground rounded-tr-sm"
+                              : "bg-muted text-foreground rounded-tl-sm"
+                          )}
+                        >
+                          <p>{msg.content}</p>
+                          <div className={cn(
+                            "text-[10px] mt-1 opacity-70 flex items-center gap-1",
+                            isOutbound ? "justify-end text-primary-foreground/80" : "text-muted-foreground"
+                          )}>
+                            {formatTime(msg.createdAt)}
+                            {isOutbound && <CheckCheck className="h-3 w-3" />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
-            {/* Message Input */}
-            <div className="border-t border-border p-4">
-              <div className="flex gap-2">
+            {/* Reply Input */}
+            <div className="p-4 border-t bg-card">
+              <form onSubmit={handleSendReply} className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  disabled={sending}
+                  className="flex-1"
                 />
-                <Button onClick={handleSendMessage}>
-                  <Send className="h-4 w-4" />
+                <Button type="submit" disabled={!replyText.trim() || sending}>
+                  {sending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
+              </form>
+              <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
+                <span>Press Enter to send</span>
+                {selectedChat.platform === 'instagram' || selectedChat.platform === 'messenger' ? (
+                  <span className="text-orange-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    24h reply window applies
+                  </span>
+                ) : null}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <MessageSquare className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-semibold">No conversation selected</h3>
+            <p className="max-w-xs text-center mt-2">
+              Select a conversation from the sidebar to view messages and reply.
+            </p>
+          </div>
+        )}
+      </Card>
     </div>
   );
-}
+};
+
+export default ConversationsPage;

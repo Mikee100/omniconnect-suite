@@ -23,6 +23,8 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import SendPhotoLinkCard from '../components/ui/SendPhotoLinkCard';
+import InvoiceCard from '../components/InvoiceCard';
+import { invoicesApi } from '../api/invoices';
 
 const CustomerDetailsPage = () => {
   const { customerId } = useParams<{ customerId: string }>();
@@ -50,6 +52,12 @@ const CustomerDetailsPage = () => {
   const { data: photoLinks, isLoading: photoLinksLoading } = useQuery({
     queryKey: ['customer-photo-links', customerId],
     queryFn: () => getCustomerPhotoLinks(customerId!),
+    enabled: !!customerId,
+  });
+
+  const { data: invoices, isLoading: invoicesLoading, refetch: refetchInvoices } = useQuery({
+    queryKey: ['customer-invoices', customerId],
+    queryFn: () => invoicesApi.getInvoicesByCustomer(customerId!),
     enabled: !!customerId,
   });
 
@@ -269,6 +277,13 @@ const CustomerDetailsPage = () => {
             </CardContent>
           </Card>
 
+          <InvoiceCard
+            customerId={customer.id}
+            invoices={invoices || []}
+            isLoading={invoicesLoading}
+            onRefresh={refetchInvoices}
+          />
+
         </div>
 
         {/* Right Column - Conversation History */}
@@ -331,7 +346,7 @@ const CustomerDetailsPage = () => {
               </div>
             </CardContent>
           </Card>
-            {/* Bookings History Card */}
+          {/* Bookings History Card */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -390,7 +405,7 @@ const CustomerDetailsPage = () => {
               )}
             </CardContent>
           </Card>
-          
+
         </div>
       </div>
     </div>

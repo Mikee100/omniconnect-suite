@@ -18,9 +18,10 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter, RefreshCw, CheckCircle, FileText, Send, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, Booking as BookingType, Service, Package } from '@/api/bookings';
+import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, getCalendarEvents, Booking as BookingType, Service, Package } from '@/api/bookings';
+import { invoicesApi, Invoice } from '@/api/invoices';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +56,10 @@ export default function Bookings() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string>('');
   const [isPaymentPending, setIsPaymentPending] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [invoices, setInvoices] = useState<Record<string, Invoice>>({});
+  const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
 
   // Helper to get package by id
   const getPackageById = (id: string) => packages.find(pkg => pkg.id === id);
@@ -67,14 +72,51 @@ export default function Bookings() {
     return bookings.filter(b => b.date.toDateString() === date.toDateString());
   };
 
+  // Get calendar events for a specific date
+  const getCalendarEventsForDate = (date: Date): any[] => {
+    return calendarEvents.filter(event => {
+      const eventDate = new Date(event.start?.dateTime || event.start?.date);
+      return eventDate.toDateString() === date.toDateString();
+    });
+  };
+
+  const fetchCalendarEvents = async () => {
+    try {
+      const events = await getCalendarEvents();
+      setCalendarEvents(events);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load calendar events',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const allInvoices = await invoicesApi.getAllInvoices();
+      const invoiceMap: Record<string, Invoice> = {};
+      allInvoices.forEach(inv => {
+        invoiceMap[inv.bookingId] = inv;
+      });
+      setInvoices(invoiceMap);
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
     fetchServices();
     fetchPackages();
+    fetchCalendarEvents();
+    fetchInvoices();
 
     // Set up polling for real-time updates
     const pollInterval = setInterval(() => {
       fetchBookings();
+      fetchCalendarEvents();
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(pollInterval);
@@ -110,6 +152,20 @@ export default function Bookings() {
       fetchAvailableHours();
     }
   }, [selectedDate, selectedService]);
+
+  // Debug: Log timeline data when selectedDate changes
+  useEffect(() => {
+    if (selectedDate) {
+      const dayBookings = getBookingsForDate(selectedDate);
+      const dayEvents = getCalendarEventsForDate(selectedDate);
+      console.log('Timeline Debug:', {
+        selectedDate: selectedDate.toDateString(),
+        dayBookings: dayBookings.map(b => ({ name: b.customerName, time: b.time, service: b.service })),
+        dayEvents: dayEvents.map(e => ({ summary: e.summary, start: e.start?.dateTime || e.start?.date })),
+        calendarEventsLength: calendarEvents.length
+      });
+    }
+  }, [selectedDate, bookings, calendarEvents]);
 
   const fetchBookings = async () => {
     try {
@@ -176,6 +232,71 @@ export default function Bookings() {
       toast({
         title: 'Error',
         description: 'Failed to load available hours',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSyncCalendar = async () => {
+    setSyncing(true);
+    try {
+      await axios.post(`${API_BASE}/api/calendar/sync`);
+      toast({
+        title: 'Calendar Synced',
+        description: 'All confirmed bookings have been synced to Google Calendar',
+      });
+      fetchBookings(); // Refresh to get googleEventId
+    } catch (error) {
+      toast({
+        title: 'Sync Failed',
+        description: 'Failed to sync calendar. Check your Google Calendar setup.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleGenerateInvoice = async (bookingId: string) => {
+    setGeneratingInvoice(bookingId);
+    try {
+      const invoice = await invoicesApi.generateInvoice(bookingId);
+      setInvoices(prev => ({ ...prev, [bookingId]: invoice }));
+      toast({
+        title: 'Invoice Generated',
+        description: `Invoice ${invoice.invoiceNumber} created successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to generate invoice',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
+  const handleSendInvoice = async (invoiceId: string, customerName: string) => {
+    try {
+      await invoicesApi.sendInvoice(invoiceId);
+      toast({
+        title: 'Invoice Sent',
+        description: `Invoice sent to ${customerName} via WhatsApp`,
+      });
+      // Update invoice status in state
+      setInvoices(prev => ({
+        ...prev,
+        [Object.keys(prev).find(key => prev[key].id === invoiceId) || '']: {
+          ...prev[Object.keys(prev).find(key => prev[key].id === invoiceId) || ''],
+          status: 'sent' as const,
+          sentAt: new Date().toISOString(),
+        }
+      }));
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send invoice',
         variant: 'destructive',
       });
     }
@@ -331,6 +452,96 @@ export default function Bookings() {
     );
   };
 
+  // Render daily timeline in vertical card style
+  const renderDailyTimeline = () => {
+    if (!selectedDate) {
+      return <div className="text-center py-8 text-muted-foreground">Select a date to view timeline.</div>;
+    }
+    const dayBookings = getBookingsForDate(selectedDate)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (dayBookings.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+            <Clock className="h-8 w-8 text-gray-400" />
+          </div>
+          <p className="text-gray-500 font-medium">No bookings for this date</p>
+          <p className="text-gray-400 text-sm mt-1">Book an appointment to see it here!</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative">
+        {/* Timeline line */}
+        <div className="absolute left-[27px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-pink-200"></div>
+        <div className="space-y-4">
+          {dayBookings.map((booking, idx) => {
+            const isFirst = idx === 0;
+            return (
+              <div key={booking.id} className="relative pl-16 pr-2 group">
+                {/* Timeline dot */}
+                <div className={`absolute left-5 top-3 w-4 h-4 rounded-full border-2 border-white shadow-sm transition-all duration-300 ${isFirst
+                  ? 'bg-gradient-to-br from-blue-500 to-purple-500 ring-4 ring-blue-100'
+                  : 'bg-gradient-to-br from-purple-400 to-pink-400'
+                  } group-hover:scale-125`}></div>
+                {/* Content card */}
+                <div className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${isFirst
+                  ? 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 shadow-md'
+                  : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md'
+                  }`}>
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Booking icon */}
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110 ${isFirst
+                        ? 'bg-gradient-to-br from-blue-100 to-purple-100'
+                        : 'bg-gradient-to-br from-gray-100 to-gray-50'
+                        }`}>
+                        <CalendarIcon className="h-7 w-7 text-blue-500" />
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">{booking.customerName}</h4>
+                          {isFirst && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full">
+                              Latest
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span className="font-medium">
+                            {booking.time}
+                          </span>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-gray-400">
+                            {booking.service}
+                          </span>
+                        </div>
+                        {booking.customerPhone && (
+                          <div className="mt-2 p-3 bg-white/50 rounded-lg border border-gray-200/50">
+                            <p className="text-sm text-gray-700 italic">{booking.customerPhone}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Decorative gradient bar */}
+                  <div className={`h-1 w-full bg-gradient-to-r ${isFirst
+                    ? 'from-blue-400 via-purple-400 to-pink-400'
+                    : 'from-purple-300 via-pink-300 to-purple-300 opacity-50'
+                    }`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const columns = [
     {
       header: 'Customer',
@@ -379,6 +590,54 @@ export default function Bookings() {
         </Badge>
       ),
     },
+    {
+      header: 'Invoice',
+      accessor: (row: Booking) => {
+        const invoice = invoices[row.id];
+
+        if (!invoice) {
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleGenerateInvoice(row.id);
+              }}
+              disabled={generatingInvoice === row.id || row.status !== 'confirmed'}
+              className="h-8"
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              {generatingInvoice === row.id ? 'Generating...' : 'Generate'}
+            </Button>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => window.open(invoicesApi.downloadInvoice(invoice.id), '_blank')}
+              title="Download PDF"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant={invoice.status === 'sent' ? 'secondary' : 'default'}
+              className="h-8"
+              onClick={() => handleSendInvoice(invoice.id, row.customerName)}
+              disabled={invoice.status === 'sent'}
+            >
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+              {invoice.status === 'sent' ? 'Sent' : 'Send'}
+            </Button>
+          </div>
+        );
+      },
+    },
   ];
 
   if (loading) {
@@ -405,6 +664,8 @@ export default function Bookings() {
             </div>
           </DialogContent>
         </Dialog>
+
+
 
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -545,30 +806,103 @@ export default function Bookings() {
           </Dialog>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Full-Width Calendar Section */}
+        <Card className="border-none shadow-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-blue-600 to-indigo-600 pb-6">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
+                <CalendarIcon className="h-7 w-7" />
+                Booking Calendar
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                onClick={handleSyncCalendar}
+                disabled={syncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Google Calendar'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 bg-white">
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Left: Large Calendar */}
+              <div className="flex justify-center items-start">
+                <div className="w-full">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    className="rounded-lg border-2 border-gray-200 p-4 w-full [&>div]:w-full [&_table]:w-full [&_td]:p-3 [&_th]:p-3 [&_button]:h-12 [&_button]:w-12 [&_button]:text-base"
+                    dayContent={renderDayContent}
+                  />
+                </div>
+              </div>
+
+              {/* Right: Bookings for Selected Date */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedDate ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Select a date'}
+                </h3>
+                <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
+                  {(() => {
+                    const selectedDayStr = selectedDate ? selectedDate.toDateString() : '';
+                    const bookingsForDay = bookings.filter(b => b.date.toDateString() === selectedDayStr);
+
+                    if (!selectedDate) {
+                      return (
+                        <div className="text-center py-16 text-muted-foreground">
+                          <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                          <p className="text-sm">Select a date to view bookings</p>
+                        </div>
+                      );
+                    }
+                    if (bookingsForDay.length === 0) {
+                      return (
+                        <div className="text-center py-16 text-muted-foreground">
+                          <Clock className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                          <p className="text-sm">No bookings for this date</p>
+                        </div>
+                      );
+                    }
+
+                    return bookingsForDay.map(booking => (
+                      <div key={booking.id} className="group flex items-start gap-4 p-4 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-all border border-transparent hover:border-blue-200 hover:shadow-md">
+                        <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base text-gray-900 truncate">{booking.customerName}</p>
+                          <p className="text-sm text-gray-600 mt-1">{booking.service}</p>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                            <Clock className="h-4 w-4" />
+                            {booking.time}
+                          </div>
+                          {booking.googleEventId && (
+                            <div className="flex items-center gap-1 text-xs text-green-600 mt-2">
+                              <CheckCircle className="h-3 w-3" />
+                              Synced to Google Calendar
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant={getStatusVariant(booking.status)} className="capitalize">
+                          {booking.status}
+                        </Badge>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rest of the content */}
         <div className="grid lg:grid-cols-3 gap-8">
 
-          {/* Left Column: Calendar & Upcoming */}
-          <div className="lg:col-span-1 space-y-8">
-            {/* Calendar Widget */}
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="bg-gradient-to-br from-blue-50 to-indigo-50/50 pb-4">
-                <CardTitle className="text-lg flex items-center gap-2 text-blue-900">
-                  <CalendarIcon className="h-5 w-5" />
-                  Calendar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 flex justify-center bg-white">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className="rounded-md"
-                  dayContent={renderDayContent}
-                />
-              </CardContent>
-            </Card>
-
+          {/* Left Column: Upcoming */}
+          <div className="lg:col-span-1 space-y-8"
+          >
 
             {/* Upcoming Bookings */}
             <Card className="border-none shadow-md">
@@ -642,41 +976,20 @@ export default function Bookings() {
               </Select>
             </div>
 
-            {/* Bookings for Selected Date */}
+            {/* Daily Timeline */}
             <Card className="border-none shadow-md">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Bookings for Selected Date</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Daily Timeline
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[300px] overflow-y-auto px-6 pb-6 space-y-4">
-                  {(() => {
-                    const selectedDayStr = selectedDate ? selectedDate.toDateString() : '';
-                    const bookingsForDay = bookings.filter(b => b.date.toDateString() === selectedDayStr);
-                    if (!selectedDate) {
-                      return <div className="text-center py-8 text-muted-foreground">Select a date to view bookings.</div>;
-                    }
-                    if (bookingsForDay.length === 0) {
-                      return <div className="text-center py-8 text-muted-foreground">No bookings for this date.</div>;
-                    }
-                    return bookingsForDay.map(booking => (
-                      <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
-                        <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                            <Clock className="h-3 w-3" />
-                            {booking.time}
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
-                          {booking.service}
-                        </Badge>
-                      </div>
-                    ));
-                  })()}
-                </div>
+              <CardContent className="p-6">
+                {renderDailyTimeline()}
               </CardContent>
             </Card>
+
+
             {/* Table Card */}
             <Card className="border-none shadow-md overflow-hidden bg-white">
               <div className="overflow-x-auto">
