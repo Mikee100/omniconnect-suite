@@ -1,6 +1,8 @@
 import React from 'react';
 
-const BULL_BOARD_URL = 'http://localhost:3000/admin/queues';
+import { API_BASE_URL } from '@/config';
+
+const BULL_BOARD_URL = `${API_BASE_URL}/admin/queues`;
 
 const QueueDashboard: React.FC = () => {
   return (

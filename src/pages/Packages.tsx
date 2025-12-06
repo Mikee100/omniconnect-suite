@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL as API_BASE } from '@/config';
 import {
   Plus,
   Edit2,
@@ -59,7 +60,6 @@ export default function PackagesPage() {
   const [editing, setEditing] = useState<Partial<Package> | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(false);
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const fetchPackages = async () => {
     setLoading(true);

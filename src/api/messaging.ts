@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '@/config';
 
 export const instagramApi = {
     getStats: async () => {
-        const response = await axios.get(`${API_URL}/instagram/stats`);
+        const response = await axios.get(`${API_URL}/api/instagram/stats`);
         return response.data;
     },
 
     getConversations: async () => {
-        const response = await axios.get(`${API_URL}/instagram/analytics/conversations`);
+        const response = await axios.get(`${API_URL}/api/instagram/analytics/conversations`);
         return response.data;
     },
 };

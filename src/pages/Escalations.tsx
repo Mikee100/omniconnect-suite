@@ -27,6 +27,8 @@ interface Escalation {
     createdAt: string;
 }
 
+import { API_BASE_URL } from '@/config';
+
 export default function Escalations() {
     const [escalations, setEscalations] = useState<Escalation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function Escalations() {
 
     const fetchEscalations = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/escalations');
+            const res = await fetch(`${API_BASE_URL}/api/escalations`);
             if (!res.ok) throw new Error('Failed to fetch escalations');
             const data = await res.json();
             setEscalations(data);
@@ -51,7 +53,7 @@ export default function Escalations() {
 
     const handleResolve = async (id: string) => {
         try {
-            const res = await fetch(`http://localhost:3000/api/escalations/${id}/resolve`, {
+            const res = await fetch(`${API_BASE_URL}/api/escalations/${id}/resolve`, {
                 method: 'POST',
             });
             if (!res.ok) throw new Error('Failed to resolve');

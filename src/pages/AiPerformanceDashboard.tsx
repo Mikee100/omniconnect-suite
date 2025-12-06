@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+import { API_BASE_URL } from '@/config';
+
 const fetchMetrics = async () => {
-  const res = await fetch('http://localhost:3000/api/analytics/ai-performance-metrics');
+  const res = await fetch(`${API_BASE_URL}/api/analytics/ai-performance-metrics`);
   if (!res.ok) throw new Error('Failed to fetch metrics');
   return res.json();
 };

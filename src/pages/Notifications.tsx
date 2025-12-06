@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
+import { API_BASE_URL } from '@/config';
 
 interface Notification {
     id: string;
@@ -34,7 +35,7 @@ export default function Notifications() {
                 params.append('type', activeTab);
             }
 
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const baseUrl = API_BASE_URL;
             const response = await fetch(`${baseUrl}/api/notifications?${params}`);
             const result = await response.json();
             setData(result);
@@ -54,7 +55,7 @@ export default function Notifications() {
 
     const markAsRead = async (id: string) => {
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const baseUrl = API_BASE_URL;
             await fetch(`${baseUrl}/api/notifications/${id}/read`, {
                 method: 'PATCH',
             });
@@ -66,7 +67,7 @@ export default function Notifications() {
 
     const markAllAsRead = async () => {
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const baseUrl = API_BASE_URL;
             await fetch(`${baseUrl}/api/notifications/mark-all-read`, {
                 method: 'PATCH',
             });
@@ -206,8 +207,8 @@ export default function Notifications() {
                                         key={notification.id}
                                         onClick={() => !notification.read && markAsRead(notification.id)}
                                         className={`flex items-start gap-4 p-4 rounded-lg border transition-all cursor-pointer ${notification.read
-                                                ? 'bg-background hover:bg-accent/50'
-                                                : 'bg-accent/20 hover:bg-accent/30 border-primary/20'
+                                            ? 'bg-background hover:bg-accent/50'
+                                            : 'bg-accent/20 hover:bg-accent/30 border-primary/20'
                                             }`}
                                     >
                                         <div className="mt-1">{getIcon(notification.type)}</div>

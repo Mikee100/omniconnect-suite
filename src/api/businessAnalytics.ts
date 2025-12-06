@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '../config';
 
 export interface BusinessKPIs {
     revenue: {
@@ -74,57 +74,57 @@ export interface YearOverYearGrowth {
 
 export const businessAnalyticsApi = {
     async getBusinessKPIs(): Promise<BusinessKPIs> {
-        const response = await axios.get(`${API_URL}/analytics/business-kpis`);
+        const response = await axios.get(`${API_URL}/api/analytics/business-kpis`);
         return response.data;
     },
 
     async getRevenue() {
-        const response = await axios.get(`${API_URL}/analytics/revenue`);
+        const response = await axios.get(`${API_URL}/api/analytics/revenue`);
         return response.data;
     },
 
     async getRevenueByPackage(): Promise<RevenueByPackage[]> {
-        const response = await axios.get(`${API_URL}/analytics/revenue-by-package`);
+        const response = await axios.get(`${API_URL}/api/analytics/revenue-by-package`);
         return response.data;
     },
 
     async getMonthlyRevenue(): Promise<MonthlyRevenue[]> {
-        const response = await axios.get(`${API_URL}/analytics/monthly-revenue`);
+        const response = await axios.get(`${API_URL}/api/analytics/monthly-revenue`);
         return response.data;
     },
 
     async getConversionRate() {
-        const response = await axios.get(`${API_URL}/analytics/conversion-rate`);
+        const response = await axios.get(`${API_URL}/api/analytics/conversion-rate`);
         return response.data;
     },
 
     async getPopularPackages() {
-        const response = await axios.get(`${API_URL}/analytics/popular-packages`);
+        const response = await axios.get(`${API_URL}/api/analytics/popular-packages`);
         return response.data;
     },
 
     async getPopularTimeSlots(): Promise<TimeSlot[]> {
-        const response = await axios.get(`${API_URL}/analytics/popular-timeslots`);
+        const response = await axios.get(`${API_URL}/api/analytics/popular-timeslots`);
         return response.data;
     },
 
     async getSeasonalTrends(): Promise<SeasonalTrend[]> {
-        const response = await axios.get(`${API_URL}/analytics/seasonal-trends`);
+        const response = await axios.get(`${API_URL}/api/analytics/seasonal-trends`);
         return response.data;
     },
 
     async getCustomerLifetimeValue(): Promise<CustomerLifetimeValue> {
-        const response = await axios.get(`${API_URL}/analytics/customer-lifetime-value`);
+        const response = await axios.get(`${API_URL}/api/analytics/customer-lifetime-value`);
         return response.data;
     },
 
     async getCustomerMetrics() {
-        const response = await axios.get(`${API_URL}/analytics/customer-metrics`);
+        const response = await axios.get(`${API_URL}/api/analytics/customer-metrics`);
         return response.data;
     },
 
     async getYearOverYearGrowth(): Promise<YearOverYearGrowth> {
-        const response = await axios.get(`${API_URL}/analytics/year-over-year-growth`);
+        const response = await axios.get(`${API_URL}/api/analytics/year-over-year-growth`);
         return response.data;
     },
 };

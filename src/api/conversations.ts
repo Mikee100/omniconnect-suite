@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '@/config';
 
 export interface Message {
     id: string;
@@ -28,23 +28,23 @@ export interface Conversation {
 export const conversationsApi = {
     getAll: async (platform?: string) => {
         const params = platform ? { platform } : {};
-        const response = await axios.get(`${API_URL}/conversations`, { params });
+        const response = await axios.get(`${API_URL}/api/conversations`, { params });
         return response.data;
     },
 
     getById: async (id: string) => {
-        const response = await axios.get(`${API_URL}/conversations/${id}`);
+        const response = await axios.get(`${API_URL}/api/conversations/${id}`);
         return response.data;
     },
 
     getMessages: async (id: string, platform?: string) => {
         const params = platform ? { platform } : {};
-        const response = await axios.get(`${API_URL}/conversations/${id}/messages`, { params });
+        const response = await axios.get(`${API_URL}/api/conversations/${id}/messages`, { params });
         return response.data;
     },
 
     sendReply: async (id: string, message: string, platform: string) => {
-        const response = await axios.post(`${API_URL}/conversations/${id}/reply`, {
+        const response = await axios.post(`${API_URL}/api/conversations/${id}/reply`, {
             message,
             platform,
         });

@@ -16,6 +16,7 @@ import { Moon, Sun, LogOut, User, Bell, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '@/config';
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
@@ -27,7 +28,7 @@ export function Navbar() {
     // Fetch unread count
     const fetchUnreadCount = async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const baseUrl = API_BASE_URL;
         const response = await fetch(`${baseUrl}/api/notifications/unread-count`);
         const data = await response.json();
         setUnreadCount(data.count || 0);

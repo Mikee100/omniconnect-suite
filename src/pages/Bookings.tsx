@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, getCalendarEvents, Booking as BookingType, Service, Package } from '@/api/bookings';
 import { invoicesApi, Invoice } from '@/api/invoices';
 import axios from 'axios';
+import { API_BASE_URL as API_BASE } from '@/config';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPackageColor } from '@/utils/packageColors';
@@ -63,7 +64,6 @@ export default function Bookings() {
 
   // Helper to get package by id
   const getPackageById = (id: string) => packages.find(pkg => pkg.id === id);
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   const { toast } = useToast();
   const { user } = useAuth();
 

@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Phone, MessageSquare, Settings, AlertCircle, CheckCircle, Send, Loader2 } from 'lucide-react';
 import { Instagram as InstagramIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from '@/config';
 
 import {
   getInstagramSettings,
@@ -60,7 +60,7 @@ export default function Instagram() {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    socketRef.current = io('http://localhost:3000', {
+    socketRef.current = io(API_BASE_URL, {
       transports: ['websocket', 'polling'],
     });
 
@@ -401,7 +401,7 @@ export default function Instagram() {
                       }}
                       aria-label="Scroll to bottom"
                     >
-                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-7-7m7 7l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-7-7m7 7l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
                   )}
                 </div>

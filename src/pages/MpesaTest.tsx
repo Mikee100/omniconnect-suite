@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { API_BASE_URL } from '@/config';
+
 const MpesaTestPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
@@ -11,7 +13,7 @@ const MpesaTestPage: React.FC = () => {
     setLoading(true);
     setResult(null);
     try {
-      const response = await fetch('http://localhost:3000/api/mpesa/test-stk-push', {
+      const response = await fetch(`${API_BASE_URL}/api/mpesa/test-stk-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, amount }),

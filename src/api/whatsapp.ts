@@ -1,23 +1,22 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/state/authStore';
+
+import { API_BASE_URL } from '@/config';
 
 let apiClient: AxiosInstance;
 
 const createApiClient = (): AxiosInstance => {
   const client = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+    baseURL: `${API_BASE_URL}/api`,
     timeout: 10000,
   });
 
   // Request interceptor to add auth token
   client.interceptors.request.use(
-    (config: AxiosRequestConfig) => {
+    (config: InternalAxiosRequestConfig) => {
       const token = useAuthStore.getState().token;
       if (token) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
-        };
+        config.headers.set('Authorization', `Bearer ${token}`);
       }
       return config;
     },

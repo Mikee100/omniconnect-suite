@@ -4,7 +4,7 @@ export const fetchWhatsAppAgentAIPerformance = async () => {
 };
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL as API_BASE } from '../config';
 
 export const fetchWhatsAppSentimentAnalytics = async () => {
   const res = await axios.get(`${API_BASE}/api/analytics/whatsapp-sentiment`);

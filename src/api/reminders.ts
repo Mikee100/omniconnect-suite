@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '../config';
 
 export interface Reminder {
     id: string;
@@ -33,39 +33,39 @@ export interface ReminderFilters {
 
 export const remindersApi = {
     async getReminders(filters?: ReminderFilters) {
-        const response = await axios.get(`${API_URL}/reminders`, { params: filters });
+        const response = await axios.get(`${API_URL}/api/reminders`, { params: filters });
         return response.data;
     },
 
     async getReminderById(id: string) {
-        const response = await axios.get(`${API_URL}/reminders/${id}`);
+        const response = await axios.get(`${API_URL}/api/reminders/${id}`);
         return response.data;
     },
 
     async getBookingReminders(bookingId: string) {
-        const response = await axios.get(`${API_URL}/reminders/booking/${bookingId}`);
+        const response = await axios.get(`${API_URL}/api/reminders/booking/${bookingId}`);
         return response.data;
     },
 
     async getUpcomingReminders(limit?: number) {
-        const response = await axios.get(`${API_URL}/reminders/upcoming`, {
+        const response = await axios.get(`${API_URL}/api/reminders/upcoming`, {
             params: { limit },
         });
         return response.data;
     },
 
     async sendReminder(id: string) {
-        const response = await axios.post(`${API_URL}/reminders/${id}/send`);
+        const response = await axios.post(`${API_URL}/api/reminders/${id}/send`);
         return response.data;
     },
 
     async updateReminder(id: string, data: Partial<Reminder>) {
-        const response = await axios.patch(`${API_URL}/reminders/${id}`, data);
+        const response = await axios.patch(`${API_URL}/api/reminders/${id}`, data);
         return response.data;
     },
 
     async cancelReminder(id: string) {
-        const response = await axios.delete(`${API_URL}/reminders/${id}`);
+        const response = await axios.delete(`${API_URL}/api/reminders/${id}`);
         return response.data;
     },
 };
