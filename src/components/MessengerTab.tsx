@@ -35,16 +35,8 @@ const MessengerTab = () => {
         );
     }
 
-    if (!stats || stats.totalMessages === 0) {
-        return (
-            <div className="text-center py-12">
-                <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Messenger Messages Yet</h3>
-                <p className="text-muted-foreground">
-                    Start receiving Messenger messages to see analytics here.
-                </p>
-            </div>
-        );
+    if (!stats) {
+        return null;
     }
 
     const formatTime = (seconds: number) => {

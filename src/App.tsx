@@ -17,6 +17,8 @@ import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Escalations from "./pages/Escalations";
+import { useEffect } from "react";
+import { useUIStore } from "./state/uiStore";
 import { useAuthStore } from "./state/authStore";
 
 
@@ -24,6 +26,11 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { theme, setTheme } = useUIStore();
+
+  useEffect(() => {
+    setTheme(theme);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

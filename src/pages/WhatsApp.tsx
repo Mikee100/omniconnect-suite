@@ -230,49 +230,49 @@ export default function WhatsApp() {
   const formatPhoneNumber = (number: string) => {
     // Remove any non-digits except +
     let digits = number.replace(/[^\d+]/g, '');
-    
+
     // If it starts with +, remove it for processing
     const hasPlus = digits.startsWith('+');
     if (hasPlus) {
       digits = digits.slice(1);
     }
-    
+
     // Handle Kenyan numbers (254 followed by 9 digits)
     if (digits.length === 12 && digits.startsWith('254')) {
-      return `+${digits.slice(0,3)} ${digits.slice(3,6)} ${digits.slice(6,9)} ${digits.slice(9)}`;
+      return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
     }
-    
+
     // Handle US/Canada 10-digit numbers
     if (digits.length === 10) {
-      return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
     }
-    
+
     // Handle other international numbers (assume 3-digit country code + 9 digits)
     if (digits.length === 12) {
-      return `+${digits.slice(0,3)} ${digits.slice(3,6)} ${digits.slice(6,9)} ${digits.slice(9)}`;
+      return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
     }
-    
+
     // Fallback: add + if not present and return as is
     if (!hasPlus && digits.length > 0) {
       return `+${digits}`;
     }
-    
+
     return number;
   };
 
   return (
-    <div className="w-full h-[150vh] flex flex-col bg-[#111b21] dark:bg-[#111b21] rounded-xl shadow overflow-hidden">
+    <div className="w-full h-[150vh] flex flex-col bg-background rounded-xl shadow overflow-hidden">
       <div className="flex flex-1 min-h-0">
         {/* Conversations List */}
-        <div className=" w-[200px] lg:w-[220px] bg-[#202c33] border-r border-[#222c2a] flex flex-col min-h-0">
-          <div className="px-3 py-2 border-b border-[#222c2a] flex items-center gap-2 bg-[#202c33] flex-shrink-0">
-            <MessageSquare className="h-4 w-4 text-[#25d366]" />
-            <span className="text-base font-semibold text-white">Chats</span>
+        <div className=" w-[200px] lg:w-[220px] bg-muted/30 border-r border-border flex flex-col min-h-0">
+          <div className="px-3 py-2 border-b border-border flex items-center gap-2 bg-muted/50 flex-shrink-0">
+            <MessageSquare className="h-4 w-4 text-green-600" />
+            <span className="text-base font-semibold text-foreground">Chats</span>
           </div>
           <div className="flex-1 min-h-0">
-            <div className="divide-y divide-[#222c2a] overflow-y-auto h-full">
+            <div className="divide-y divide-border overflow-y-auto h-full">
               {(conversations || []).length === 0 && (
-                <div className="text-center text-muted-foreground py-6 text-white/60 text-xs">No conversations</div>
+                <div className="text-center text-muted-foreground py-6 text-xs">No conversations</div>
               )}
               {(conversations || []).map((conversation) => {
                 const isActive = selectedRecipient === (conversation.phone || conversation.customerId);
@@ -287,7 +287,7 @@ export default function WhatsApp() {
                     }}
                     className={cn(
                       'flex items-center gap-2 px-3 py-2 cursor-pointer transition-all',
-                      isActive ? 'bg-[#2a3942]' : 'hover:bg-[#222c2a]'
+                      isActive ? 'bg-accent' : 'hover:bg-accent/50'
                     )}
                     style={{ minHeight: 48 }}
                   >
@@ -298,15 +298,15 @@ export default function WhatsApp() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={cn('font-medium truncate text-sm', isActive ? 'text-white' : 'text-white/90')}>
+                        <span className={cn('font-medium truncate text-sm text-foreground')}>
                           {displayPhone}
                         </span>
-                        <span className="text-[10px] text-[#8696a0] ml-2 whitespace-nowrap">
+                        <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">
                           {conversation.latestTimestamp ? new Date(conversation.latestTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-xs text-[#8696a0] truncate max-w-[120px]">{conversation.latestMessage}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[120px]">{conversation.latestMessage}</span>
                         {conversation.unreadCount > 0 && (
                           <span className="ml-2 bg-[#25d366] text-[10px] text-white rounded-full px-1.5 py-0.5 font-semibold">
                             {conversation.unreadCount}
@@ -325,7 +325,7 @@ export default function WhatsApp() {
         <div className="flex flex-col flex-1 min-h-0">
           {selectedRecipient ? (
             <>
-              <div className="flex-shrink-0 border-b border-[#222c2a] px-4 py-2 bg-[#ece5dd] dark:bg-[#222c2a]">
+              <div className="flex-shrink-0 border-b border-border px-4 py-2 bg-muted/30">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Avatar className="h-6 w-6">
@@ -388,8 +388,8 @@ export default function WhatsApp() {
                           className={cn(
                             'whatsapp-bubble px-3 py-1.5 rounded-xl shadow',
                             message.direction === 'outbound'
-                              ? 'bg-[#d1f7c4] text-black rounded-br-md'
-                              : 'bg-white dark:bg-[#2a2f32] text-black dark:text-white rounded-bl-md'
+                              ? 'bg-primary/20 text-foreground rounded-br-md'
+                              : 'bg-card text-foreground border border-border/50 rounded-bl-md'
                           )}
                           style={{ maxWidth: '70%' }}
                         >
@@ -402,7 +402,7 @@ export default function WhatsApp() {
                     ))}
                     {isTyping && (
                       <div className="flex justify-start">
-                        <div className="bg-white dark:bg-[#2a2f32] rounded-xl px-3 py-1.5 text-xs max-w-[70%] shadow">
+                        <div className="bg-card border border-border/50 rounded-xl px-3 py-1.5 text-xs max-w-[70%] shadow">
                           <div className="flex items-center space-x-1">
                             <div className="flex space-x-0.5">
                               <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></div>
@@ -428,18 +428,18 @@ export default function WhatsApp() {
                       }}
                       aria-label="Scroll to bottom"
                     >
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-7-7m7 7l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-7-7m7 7l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
                   )}
                 </div>
               </div>
-              <div className="flex gap-1 items-end p-2 bg-[#ece5dd] dark:bg-[#222c2a] flex-shrink-0 border-t border-[#222c2a]">
+              <div className="flex gap-1 items-end p-2 bg-muted/30 flex-shrink-0 border-t border-border">
                 <Textarea
                   placeholder="Type a message"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   rows={1}
-                  className="flex-1 rounded-2xl resize-none border-none bg-white dark:bg-[#2a2f32] shadow focus:ring-0 text-xs px-2 py-1"
+                  className="flex-1 rounded-2xl resize-none border-none bg-background shadow focus:ring-0 text-xs px-2 py-1"
                   style={{ minHeight: 28, maxHeight: 80 }}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) {

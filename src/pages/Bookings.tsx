@@ -463,11 +463,11 @@ export default function Bookings() {
     if (dayBookings.length === 0) {
       return (
         <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-            <Clock className="h-8 w-8 text-gray-400" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+            <Clock className="h-8 w-8 text-muted-foreground/30" />
           </div>
-          <p className="text-gray-500 font-medium">No bookings for this date</p>
-          <p className="text-gray-400 text-sm mt-1">Book an appointment to see it here!</p>
+          <p className="text-muted-foreground font-medium">No bookings for this date</p>
+          <p className="text-muted-foreground/70 text-sm mt-1">Book an appointment to see it here!</p>
         </div>
       );
     }
@@ -488,41 +488,41 @@ export default function Bookings() {
                   } group-hover:scale-125`}></div>
                 {/* Content card */}
                 <div className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${isFirst
-                  ? 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 shadow-md'
-                  : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md'
+                  ? 'bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-800/50 shadow-md'
+                  : 'bg-card border-border hover:border-border/80 hover:shadow-md'
                   }`}>
                   <div className="p-4">
                     <div className="flex items-start gap-3">
                       {/* Booking icon */}
                       <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110 ${isFirst
-                        ? 'bg-gradient-to-br from-blue-100 to-purple-100'
-                        : 'bg-gradient-to-br from-gray-100 to-gray-50'
+                        ? 'bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40'
+                        : 'bg-muted'
                         }`}>
                         <CalendarIcon className="h-7 w-7 text-blue-500" />
                       </div>
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900">{booking.customerName}</h4>
+                          <h4 className="font-semibold text-foreground">{booking.customerName}</h4>
                           {isFirst && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full">
                               Latest
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <Clock className="h-3.5 w-3.5" />
                           <span className="font-medium">
                             {booking.time}
                           </span>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-gray-400">
+                          <span className="text-muted-foreground/50">•</span>
+                          <span className="text-muted-foreground/50">
                             {booking.service}
                           </span>
                         </div>
                         {booking.customerPhone && (
-                          <div className="mt-2 p-3 bg-white/50 rounded-lg border border-gray-200/50">
-                            <p className="text-sm text-gray-700 italic">{booking.customerPhone}</p>
+                          <div className="mt-2 p-3 bg-card/50 rounded-lg border border-border/50">
+                            <p className="text-sm text-muted-foreground italic">{booking.customerPhone}</p>
                           </div>
                         )}
                       </div>
@@ -548,8 +548,8 @@ export default function Bookings() {
       accessor: 'customerName' as keyof Booking,
       cell: (row: Booking) => (
         <div className="flex flex-col">
-          <span className="font-medium text-gray-900">{row.customerName}</span>
-          <span className="text-sm text-gray-500">{row.customerPhone}</span>
+          <span className="font-medium text-foreground">{row.customerName}</span>
+          <span className="text-sm text-muted-foreground">{row.customerPhone}</span>
         </div>
       )
     },
@@ -577,8 +577,8 @@ export default function Bookings() {
       accessor: (row: Booking) => row.date.toLocaleDateString(),
       cell: (row: Booking) => (
         <div className="flex flex-col">
-          <span className="text-gray-900">{row.date.toLocaleDateString()}</span>
-          <span className="text-sm text-gray-500">{row.time}</span>
+          <span className="text-foreground">{row.date.toLocaleDateString()}</span>
+          <span className="text-sm text-muted-foreground">{row.time}</span>
         </div>
       )
     },
@@ -649,7 +649,7 @@ export default function Bookings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-8 font-sans">
+    <div className="min-h-screen bg-background p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
 
         {/* Payment Pending Modal */}
@@ -670,7 +670,7 @@ export default function Bookings() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Bookings</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Bookings</h1>
             <p className="text-muted-foreground mt-1 text-lg">
               Manage appointments and schedules
             </p>
