@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPackageColor } from '@/utils/packageColors';
 import { DayContentProps } from 'react-day-picker';
+import { cn } from '@/lib/utils';
 
 interface Booking {
   id: string;
@@ -475,64 +476,66 @@ export default function Bookings() {
     return (
       <div className="relative">
         {/* Timeline line */}
-        <div className="absolute left-[27px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-pink-200"></div>
+        <div className="absolute left-[27px] top-0 bottom-0 w-0.5 bg-border"></div>
         <div className="space-y-4">
           {dayBookings.map((booking, idx) => {
             const isFirst = idx === 0;
             return (
               <div key={booking.id} className="relative pl-16 pr-2 group">
                 {/* Timeline dot */}
-                <div className={`absolute left-5 top-3 w-4 h-4 rounded-full border-2 border-white shadow-sm transition-all duration-300 ${isFirst
-                  ? 'bg-gradient-to-br from-blue-500 to-purple-500 ring-4 ring-blue-100'
-                  : 'bg-gradient-to-br from-purple-400 to-pink-400'
-                  } group-hover:scale-125`}></div>
+                <div className={cn(
+                  "absolute left-5 top-3 w-4 h-4 rounded-full border-2 border-background shadow-sm transition-all duration-300 group-hover:scale-125",
+                  isFirst ? "bg-primary ring-4 ring-primary/20" : "bg-muted-foreground/30"
+                )}></div>
                 {/* Content card */}
-                <div className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${isFirst
-                  ? 'bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-800/50 shadow-md'
-                  : 'bg-card border-border hover:border-border/80 hover:shadow-md'
-                  }`}>
+                <div className={cn(
+                  "relative overflow-hidden rounded-xl border transition-all duration-300",
+                  isFirst
+                    ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
+                    : "bg-card border-border hover:border-primary/30 hover:shadow-md"
+                )}>
                   <div className="p-4">
                     <div className="flex items-start gap-3">
                       {/* Booking icon */}
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110 ${isFirst
-                        ? 'bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40'
-                        : 'bg-muted'
-                        }`}>
-                        <CalendarIcon className="h-7 w-7 text-blue-500" />
+                      <div className={cn(
+                        "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110",
+                        isFirst ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <CalendarIcon className={cn("h-6 w-6", isFirst ? "text-primary" : "text-muted-foreground")} />
                       </div>
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <h4 className="font-semibold text-foreground">{booking.customerName}</h4>
                           {isFirst && (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full">
+                            <span className="px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
                               Latest
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <Clock className="h-3.5 w-3.5" />
-                          <span className="font-medium">
+                          <span className="font-medium text-foreground">
                             {booking.time}
                           </span>
                           <span className="text-muted-foreground/50">•</span>
-                          <span className="text-muted-foreground/50">
+                          <span>
                             {booking.service}
                           </span>
                         </div>
                         {booking.customerPhone && (
-                          <div className="mt-2 p-3 bg-card/50 rounded-lg border border-border/50">
+                          <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border/50">
                             <p className="text-sm text-muted-foreground italic">{booking.customerPhone}</p>
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                  {/* Decorative gradient bar */}
-                  <div className={`h-1 w-full bg-gradient-to-r ${isFirst
-                    ? 'from-blue-400 via-purple-400 to-pink-400'
-                    : 'from-purple-300 via-pink-300 to-purple-300 opacity-50'
-                    }`}></div>
+                  {/* Decorative bar */}
+                  <div className={cn(
+                    "h-1 w-full",
+                    isFirst ? "bg-primary" : "bg-muted"
+                  )}></div>
                 </div>
               </div>
             );

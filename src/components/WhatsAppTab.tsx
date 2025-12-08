@@ -64,13 +64,13 @@ const SENTIMENT_COLORS = {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg text-xs">
-        <p className="font-semibold text-gray-900 mb-1">{label}</p>
+      <div className="bg-popover p-3 border border-border shadow-lg rounded-lg text-xs">
+        <p className="font-semibold text-foreground mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-gray-600">
+          <div key={index} className="flex items-center gap-2 text-muted-foreground">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
             <span>{entry.name}:</span>
-            <span className="font-medium text-gray-900">{entry.value}</span>
+            <span className="font-medium text-foreground">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -172,29 +172,29 @@ const WhatsAppTab = () => {
       label: 'Total Customers',
       value: stats.totalCustomers,
       icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
+      color: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-100 dark:bg-blue-900/30',
     },
     {
       label: 'Inbound Msgs',
       value: stats.inboundMessages,
       icon: MessageSquare,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
     },
     {
       label: 'Outbound Msgs',
       value: stats.outboundMessages,
       icon: Send,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
+      color: 'text-purple-600 dark:text-purple-400',
+      bg: 'bg-purple-100 dark:bg-purple-900/30',
     },
     {
       label: 'Conversion Rate',
       value: `${(stats.bookingConversionRate * 100).toFixed(1)}%`,
       icon: TrendingUp,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
+      color: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
     },
   ];
 
@@ -202,19 +202,19 @@ const WhatsAppTab = () => {
     <div className="space-y-6 p-1">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">WhatsApp Analytics</h2>
-          <p className="text-sm text-gray-500">Real-time insights into customer engagement and performance.</p>
+          <h2 className="text-2xl font-bold text-foreground tracking-tight">WhatsApp Analytics</h2>
+          <p className="text-sm text-muted-foreground">Real-time insights into customer engagement and performance.</p>
         </div>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricCards.map((card, idx) => (
-          <Card key={idx} className="border-none shadow-sm hover:shadow-md transition-shadow">
+          <Card key={idx} className="border-none shadow-sm hover:shadow-md transition-shadow bg-card">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{card.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{card.label}</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>
               </div>
               <div className={`p-3 rounded-xl ${card.bg}`}>
                 <card.icon className={`w-5 h-5 ${card.color}`} />
@@ -229,7 +229,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" /> Peak Chat Hours
+              <Clock className="w-4 h-4 text-muted-foreground" /> Peak Chat Hours
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -247,13 +247,13 @@ const WhatsAppTab = () => {
                     dataKey="hour"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                     tickFormatter={(val) => `${val}:00`}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
@@ -273,7 +273,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" /> Peak Chat Days
+              <Calendar className="w-4 h-4 text-muted-foreground" /> Peak Chat Days
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -285,12 +285,12 @@ const WhatsAppTab = () => {
                     dataKey="day"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar
@@ -312,7 +312,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Smile className="w-4 h-4 text-gray-500" /> Customer Sentiment
+              <Smile className="w-4 h-4 text-muted-foreground" /> Customer Sentiment
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -342,8 +342,8 @@ const WhatsAppTab = () => {
               )}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
-                  <span className="text-2xl font-bold text-gray-900">{sentiment?.total || 0}</span>
-                  <p className="text-[10px] text-gray-500 uppercase">Analyzed</p>
+                  <span className="text-2xl font-bold text-foreground">{sentiment?.total || 0}</span>
+                  <p className="text-[10px] text-muted-foreground uppercase">Analyzed</p>
                 </div>
               </div>
             </div>
@@ -354,7 +354,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gray-500" /> Sentiment Trend
+              <Activity className="w-4 h-4 text-muted-foreground" /> Sentiment Trend
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -366,12 +366,12 @@ const WhatsAppTab = () => {
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
@@ -390,7 +390,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-gray-500" /> Sentiment by Topic
+              <MessageCircle className="w-4 h-4 text-muted-foreground" /> Sentiment by Topic
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -404,7 +404,7 @@ const WhatsAppTab = () => {
                     type="category"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                     width={100}
                   />
                   <Tooltip content={<CustomTooltip />} />
@@ -421,7 +421,7 @@ const WhatsAppTab = () => {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-gray-500" /> Trending Keywords
+              <TrendingUp className="w-4 h-4 text-muted-foreground" /> Trending Keywords
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -433,12 +433,12 @@ const WhatsAppTab = () => {
                     dataKey="keyword"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar
@@ -455,73 +455,75 @@ const WhatsAppTab = () => {
       </div>
 
       {/* Row 4: Agent vs AI */}
-      {agentAIPerformance && (
-        <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Bot className="w-4 h-4 text-gray-500" /> Agent vs AI Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">Metric</th>
-                    <th className="px-6 py-3 font-medium text-center">Human Agent</th>
-                    <th className="px-6 py-3 font-medium text-center">AI Assistant</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">Messages Handled</td>
-                    <td className="px-6 py-4 text-center text-gray-600">{agentAIPerformance.agent.count}</td>
-                    <td className="px-6 py-4 text-center text-gray-600">{agentAIPerformance.ai.count}</td>
-                  </tr>
-                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">Resolution Rate</td>
-                    <td className="px-6 py-4 text-center">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {agentAIPerformance.agent.resolutionRate}%
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                        {agentAIPerformance.ai.resolutionRate}%
-                      </Badge>
-                    </td>
-                  </tr>
-                  <tr className="bg-white hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">Avg. Sentiment</td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-green-500"
-                            style={{ width: `${agentAIPerformance.agent.sentiment.positive}%` }}
-                          />
+      {
+        agentAIPerformance && (
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Bot className="w-4 h-4 text-muted-foreground" /> Agent vs AI Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Metric</th>
+                      <th className="px-6 py-3 font-medium text-center">Human Agent</th>
+                      <th className="px-6 py-3 font-medium text-center">AI Assistant</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr className="bg-card hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-foreground">Messages Handled</td>
+                      <td className="px-6 py-4 text-center text-muted-foreground">{agentAIPerformance.agent.count}</td>
+                      <td className="px-6 py-4 text-center text-muted-foreground">{agentAIPerformance.ai.count}</td>
+                    </tr>
+                    <tr className="bg-card hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-foreground">Resolution Rate</td>
+                      <td className="px-6 py-4 text-center">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                          {agentAIPerformance.agent.resolutionRate}%
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20">
+                          {agentAIPerformance.ai.resolutionRate}%
+                        </Badge>
+                      </td>
+                    </tr>
+                    <tr className="bg-card hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-foreground">Avg. Sentiment</td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500"
+                              style={{ width: `${agentAIPerformance.agent.sentiment.positive}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">{agentAIPerformance.agent.sentiment.positive}%</span>
                         </div>
-                        <span className="text-xs text-gray-500">{agentAIPerformance.agent.sentiment.positive}%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-green-500"
-                            style={{ width: `${agentAIPerformance.ai.sentiment.positive}%` }}
-                          />
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500"
+                              style={{ width: `${agentAIPerformance.ai.sentiment.positive}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">{agentAIPerformance.ai.sentiment.positive}%</span>
                         </div>
-                        <span className="text-xs text-gray-500">{agentAIPerformance.ai.sentiment.positive}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
 
       {/* Row 5: Extreme Messages */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -534,15 +536,15 @@ const WhatsAppTab = () => {
           <CardContent>
             <div className="space-y-3">
               {extremeMessages.mostPositive?.slice(0, 3).map((msg: any, idx: number) => (
-                <div key={idx} className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-100 text-sm">
-                  <p className="text-gray-800 italic">"{msg.content}"</p>
+                <div key={idx} className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-sm">
+                  <p className="text-foreground italic">"{msg.content}"</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-emerald-600 font-medium">Score: {msg.score}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Score: {msg.score}</span>
+                    <span className="text-[10px] text-muted-foreground">{new Date(msg.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
-              {!extremeMessages.mostPositive?.length && <p className="text-sm text-gray-400">No data available</p>}
+              {!extremeMessages.mostPositive?.length && <p className="text-sm text-muted-foreground">No data available</p>}
             </div>
           </CardContent>
         </Card>
@@ -556,20 +558,20 @@ const WhatsAppTab = () => {
           <CardContent>
             <div className="space-y-3">
               {extremeMessages.mostNegative?.slice(0, 3).map((msg: any, idx: number) => (
-                <div key={idx} className="p-3 bg-rose-50/50 rounded-lg border border-rose-100 text-sm">
-                  <p className="text-gray-800 italic">"{msg.content}"</p>
+                <div key={idx} className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm">
+                  <p className="text-foreground italic">"{msg.content}"</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-rose-600 font-medium">Score: {msg.score}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Score: {msg.score}</span>
+                    <span className="text-[10px] text-muted-foreground">{new Date(msg.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
-              {!extremeMessages.mostNegative?.length && <p className="text-sm text-gray-400">No data available</p>}
+              {!extremeMessages.mostNegative?.length && <p className="text-sm text-muted-foreground">No data available</p>}
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </div >
   );
 };
 
