@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import { useAuthStore } from "./state/authStore";
 import Escalations from "./pages/Escalations";
 import Notifications from "./pages/Notifications";
+import MessengerPage from "./pages/MessengerPage";
 
 const queryClient = new QueryClient();
 
@@ -207,6 +208,16 @@ const AppRouter = () => {
               <ProtectedRoute>
                 <Layout>
                   <Notifications />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messenger"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <MessengerPage />
                 </Layout>
               </ProtectedRoute>
             }

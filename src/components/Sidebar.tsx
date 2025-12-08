@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Bookings', href: '/bookings', icon: Calendar },
   { name: 'Customers', href: '/customers', icon: Users },
   { name: 'WhatsApp', href: '/whatsapp', icon: Phone },
+  { name: 'Messenger', href: '/messenger', icon: MessageSquare },
   { name: 'Instagram', href: '/instagram', icon: Instagram },
   { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
