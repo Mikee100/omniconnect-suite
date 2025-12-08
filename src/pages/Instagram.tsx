@@ -15,6 +15,8 @@ import { Instagram as InstagramIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { API_BASE_URL } from '@/config';
 
+import { io, Socket } from 'socket.io-client';
+
 import {
   getInstagramSettings,
   updateInstagramSettings,
