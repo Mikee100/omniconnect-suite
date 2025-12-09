@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCustomer, getCustomerMessages, toggleCustomerAi, getCustomerPhotoLinks } from '../api/customers';
+import { getCustomer, getCustomerMessages, toggleCustomerAi, getCustomerPhotoLinks, getCustomerSessionNotes, updateSessionNote, SessionNote } from '../api/customers';
 import { getCustomerBookings } from '../api/bookings';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import {
   TrendingUp,
   Users,
   Package,
+  ClipboardList,
+  CheckCircle2,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -58,6 +60,12 @@ const CustomerDetailsPage = () => {
   const { data: photoLinks, isLoading: photoLinksLoading } = useQuery({
     queryKey: ['customer-photo-links', customerId],
     queryFn: () => getCustomerPhotoLinks(customerId!),
+    enabled: !!customerId,
+  });
+
+  const { data: sessionNotes, isLoading: sessionNotesLoading, refetch: refetchSessionNotes } = useQuery({
+    queryKey: ['customer-session-notes', customerId],
+    queryFn: () => getCustomerSessionNotes(customerId!),
     enabled: !!customerId,
   });
 
@@ -358,7 +366,7 @@ const CustomerDetailsPage = () => {
         <div className="lg:col-span-3 space-y-6">
           {/* Tabs for Main Content */}
           <Tabs defaultValue="conversation" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-4">
+            <TabsList className="grid w-full max-w-2xl grid-cols-5">
               <TabsTrigger value="conversation" className="text-xs">
                 <MessageSquare className="h-3.5 w-3.5 mr-2" />
                 Conversation
@@ -366,6 +374,15 @@ const CustomerDetailsPage = () => {
               <TabsTrigger value="bookings" className="text-xs">
                 <CalendarCheck className="h-3.5 w-3.5 mr-2" />
                 Bookings
+              </TabsTrigger>
+              <TabsTrigger value="session-notes" className="text-xs">
+                <ClipboardList className="h-3.5 w-3.5 mr-2" />
+                Session Notes
+                {sessionNotes && sessionNotes.filter(n => n.status === 'pending').length > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">
+                    {sessionNotes.filter(n => n.status === 'pending').length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="invoices" className="text-xs">
                 <FileText className="h-3.5 w-3.5 mr-2" />
@@ -486,6 +503,177 @@ const CustomerDetailsPage = () => {
                           >
                             {booking.status}
                           </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Session Notes Tab */}
+            <TabsContent value="session-notes" className="mt-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4" />
+                    Session Notes & Preferences
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Items and people customer mentioned bringing to their session
+                  </CardDescription>
+                </CardHeader>
+                <Separator />
+                <CardContent className="p-4">
+                  {sessionNotesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  ) : sessionNotes?.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <ClipboardList className="h-10 w-10 mb-3 opacity-20" />
+                      <p className="text-sm">No session notes yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sessionNotes?.map((note) => (
+                        <div
+                          key={note.id}
+                          className={`p-4 rounded-lg border ${
+                            note.status === 'pending'
+                              ? 'border-amber-200 bg-amber-50/50'
+                              : note.status === 'approved'
+                              ? 'border-green-200 bg-green-50/50'
+                              : note.status === 'declined'
+                              ? 'border-red-200 bg-red-50/50'
+                              : 'border-border bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={
+                                    note.type === 'external_people'
+                                      ? 'default'
+                                      : note.type === 'external_items'
+                                      ? 'secondary'
+                                      : 'outline'
+                                  }
+                                  className="text-xs"
+                                >
+                                  {note.type === 'external_people'
+                                    ? 'External People'
+                                    : note.type === 'external_items'
+                                    ? 'External Items'
+                                    : note.type}
+                                </Badge>
+                                <Badge
+                                  variant={
+                                    note.status === 'pending'
+                                      ? 'destructive'
+                                      : note.status === 'approved'
+                                      ? 'default'
+                                      : 'secondary'
+                                  }
+                                  className="text-xs"
+                                >
+                                  {note.status}
+                                </Badge>
+                                {note.booking && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {note.booking.service}
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div>
+                                <p className="text-sm font-medium mb-1">
+                                  Bringing: {note.items.join(', ')}
+                                </p>
+                                {note.description && (
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    {note.description}
+                                  </p>
+                                )}
+                                {note.sourceMessage && (
+                                  <p className="text-xs text-muted-foreground italic mb-2">
+                                    "{note.sourceMessage}"
+                                  </p>
+                                )}
+                                {note.booking && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Booking: {format(new Date(note.booking.dateTime), 'MMM d, yyyy • h:mm a')}
+                                  </p>
+                                )}
+                              </div>
+
+                              {note.adminNotes && (
+                                <div className="mt-2 p-2 bg-background rounded border border-border">
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Admin Notes:</p>
+                                  <p className="text-xs">{note.adminNotes}</p>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span>
+                                  {format(new Date(note.createdAt), 'MMM d, yyyy • h:mm a')}
+                                </span>
+                                {note.reviewedAt && (
+                                  <span>
+                                    Reviewed {format(new Date(note.reviewedAt), 'MMM d, yyyy')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {note.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs"
+                                  onClick={async () => {
+                                    try {
+                                      await updateSessionNote(note.id, {
+                                        status: 'approved',
+                                        reviewedBy: 'admin', // TODO: Get actual admin user ID
+                                      });
+                                      toast.success('Session note approved');
+                                      refetchSessionNotes();
+                                    } catch (error) {
+                                      toast.error('Failed to update note');
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs"
+                                  onClick={async () => {
+                                    const notes = prompt('Add notes (optional):');
+                                    try {
+                                      await updateSessionNote(note.id, {
+                                        status: 'reviewed',
+                                        adminNotes: notes || undefined,
+                                        reviewedBy: 'admin', // TODO: Get actual admin user ID
+                                      });
+                                      toast.success('Session note reviewed');
+                                      refetchSessionNotes();
+                                    } catch (error) {
+                                      toast.error('Failed to update note');
+                                    }
+                                  }}
+                                >
+                                  <Clock className="h-3.5 w-3.5 mr-1" />
+                                  Review
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

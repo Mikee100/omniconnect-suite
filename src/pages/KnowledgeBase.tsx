@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Loader2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { knowledgeBaseApi, KBEntry } from '@/api/knowledgeBase';
 import { useToast } from '@/components/ui/use-toast';
+import { PageHeader } from '@/components/PageHeader';
 
 export default function KnowledgeBase() {
   const [entries, setEntries] = useState<KBEntry[]>([]);
@@ -116,23 +117,27 @@ export default function KnowledgeBase() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Knowledge Base</h1>
-          <p className="text-muted-foreground">
-            Manage FAQs and information for AI responses
-          </p>
-        </div>
-        <Button onClick={handleCreateNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Entry
-        </Button>
-      </div>
+    <div className="space-y-6 animate-fadeIn">
+      <PageHeader
+        title="Knowledge Base"
+        description="Manage FAQs and information for AI responses"
+        actions={
+          <Button onClick={handleCreateNew} className="shadow-md hover:shadow-lg transition-all">
+            <Plus className="mr-2 h-4 w-4" />
+            New Entry
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Entries List */}
-        <Card className="lg:col-span-1 shadow-soft">
+        <Card className="lg:col-span-1 border-border/50 shadow-lg">
+          <CardHeader className="border-b border-border/50">
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Entries
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-4">
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -140,7 +145,7 @@ export default function KnowledgeBase() {
                 placeholder="Search entries..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-10 border-border/50"
               />
             </div>
             <ScrollArea className="h-[600px]">

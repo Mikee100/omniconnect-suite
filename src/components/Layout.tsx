@@ -19,17 +19,17 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-background flex overflow-x-hidden">
+    <div className="min-h-screen w-full bg-gradient-subtle-bg flex overflow-x-hidden">
       <Sidebar />
       <div className={cn(
-        "flex-1 flex flex-col transition-[margin-left] duration-300 ease-in-out",
-        isDesktop && (sidebarCollapsed ? "ml-16" : "ml-48"),
+        "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+        isDesktop && (sidebarCollapsed ? "ml-16" : "ml-64"),
         !isDesktop && "ml-0"
       )}>
         <Navbar />
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 animate-fadeIn w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fadeIn w-full max-w-[1920px] mx-auto">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

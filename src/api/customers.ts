@@ -63,3 +63,36 @@ export const getCustomerPhotoLinks = async (customerId: string): Promise<PhotoLi
   const response = await api.get(`/customers/${customerId}/photo-links`);
   return response.data;
 };
+
+export interface SessionNote {
+  id: string;
+  customerId: string;
+  type: 'external_people' | 'external_items' | 'special_request' | 'other';
+  items: string[];
+  description: string | null;
+  bookingId: string | null;
+  booking?: {
+    id: string;
+    service: string;
+    dateTime: string;
+    status: string;
+  };
+  status: 'pending' | 'reviewed' | 'approved' | 'declined';
+  adminNotes: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  sourceMessage: string | null;
+  platform: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getCustomerSessionNotes = async (customerId: string): Promise<SessionNote[]> => {
+  const response = await api.get(`/customers/${customerId}/session-notes`);
+  return response.data;
+};
+
+export const updateSessionNote = async (noteId: string, data: { status?: string; adminNotes?: string; reviewedBy?: string }): Promise<SessionNote> => {
+  const response = await api.patch(`/customers/session-notes/${noteId}`, data);
+  return response.data;
+};

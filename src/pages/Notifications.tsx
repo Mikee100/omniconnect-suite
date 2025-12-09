@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Bell, Calendar, DollarSign, RefreshCw, Check, CheckCheck } from 'lucide-react';
+import { Bell, Calendar, DollarSign, RefreshCw, Check, CheckCheck, AlertCircle, Search, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { API_BASE_URL } from '@/config';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Notification {
     id: string;
-    type: 'booking' | 'reschedule' | 'payment';
+    type: 'booking' | 'reschedule' | 'payment' | 'reschedule_request' | 'ai_escalation';
     title: string;
     message: string;
     metadata?: any;
@@ -24,7 +26,7 @@ interface NotificationsData {
 }
 
 export default function Notifications() {
-    const [data, setData] = useState<NotificationsData>({ notifications: [], total: 0, unreadCount: 0 });
+    const [data, setData] = useState<NotificationsData>( { notifications: [], total: 0, unreadCount: 0 });
     const [search, setSearch] = useState('');
     const [filterRead, setFilterRead] = useState<'all' | 'read' | 'unread'>('all');
     const [page, setPage] = useState(1);
@@ -70,12 +72,10 @@ export default function Notifications() {
     useEffect(() => {
         setPage(1);
         fetchNotifications(true);
-        // Auto-refresh every 30 seconds
         const interval = setInterval(() => fetchNotifications(true), 30000);
         return () => clearInterval(interval);
     }, [activeTab, search, filterRead]);
 
-    // Fetch next page
     const loadMore = () => {
         setPage(prev => prev + 1);
     };
@@ -92,7 +92,7 @@ export default function Notifications() {
             await fetch(`${baseUrl}/api/notifications/${id}/read`, {
                 method: 'PATCH',
             });
-            fetchNotifications();
+            fetchNotifications(true);
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
         }
@@ -104,35 +104,53 @@ export default function Notifications() {
             await fetch(`${baseUrl}/api/notifications/mark-all-read`, {
                 method: 'PATCH',
             });
-            fetchNotifications();
+            fetchNotifications(true);
         } catch (error) {
             console.error('Failed to mark all as read:', error);
         }
     };
 
     const getIcon = (type: string) => {
+        const iconClass = "h-3.5 w-3.5";
         switch (type) {
             case 'booking':
-                return <Calendar className="h-5 w-5 text-blue-500" />;
+                return <Calendar className={`${iconClass} text-blue-500`} />;
             case 'reschedule':
-                return <RefreshCw className="h-5 w-5 text-amber-500" />;
+            case 'reschedule_request':
+                return <RefreshCw className={`${iconClass} text-amber-500`} />;
             case 'payment':
-                return <DollarSign className="h-5 w-5 text-green-500" />;
+                return <DollarSign className={`${iconClass} text-green-500`} />;
+            case 'ai_escalation':
+                return <AlertCircle className={`${iconClass} text-red-500`} />;
             default:
-                return <Bell className="h-5 w-5" />;
+                return <Bell className={iconClass} />;
         }
     };
 
     const getTypeColor = (type: string) => {
         switch (type) {
             case 'booking':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400';
             case 'reschedule':
-                return 'bg-amber-100 text-amber-800';
+            case 'reschedule_request':
+                return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400';
             case 'payment':
-                return 'bg-green-100 text-green-800';
+                return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400';
+            case 'ai_escalation':
+                return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/20 dark:text-gray-400';
+        }
+    };
+
+    const getTypeLabel = (type: string) => {
+        switch (type) {
+            case 'reschedule_request':
+                return 'Reschedule';
+            case 'ai_escalation':
+                return 'Escalation';
+            default:
+                return type.charAt(0).toUpperCase() + type.slice(1);
         }
     };
 
@@ -148,210 +166,277 @@ export default function Notifications() {
         return createdDate.toDateString() === today.toDateString();
     }).length;
 
-    const totalReschedules = data.notifications.filter(n => n.type === 'reschedule').length;
+    const pendingEscalations = data.notifications.filter(n => 
+        n.type === 'ai_escalation' || n.type === 'reschedule_request'
+    ).filter(n => !n.read).length;
 
-    // Expanded state for notification details
     const [expandedMap, setExpandedMap] = useState<{ [id: string]: boolean }>({});
 
     const toggleExpanded = (id: string) => {
         setExpandedMap(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    // Group notifications by date
+    const groupedNotifications = data.notifications.reduce((groups, n) => {
+        const date = format(new Date(n.createdAt), 'yyyy-MM-dd');
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(n);
+        return groups;
+    }, {} as { [date: string]: Notification[] });
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const yesterday = format(new Date(Date.now() - 86400000), 'yyyy-MM-dd');
+
+    const getDateLabel = (date: string) => {
+        if (date === today) return 'Today';
+        if (date === yesterday) return 'Yesterday';
+        return format(new Date(date), 'MMM d, yyyy');
+    };
+
     return (
-        <div className="p-4 md:p-6 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="p-4 space-y-4 max-w-7xl mx-auto">
+            {/* Compact Header */}
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Notifications</h1>
-                    <p className="text-muted-foreground">Stay updated on bookings, payments, and reschedules</p>
+                    <h1 className="text-xl font-semibold">Notifications</h1>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {data.unreadCount > 0 ? `${data.unreadCount} unread` : 'All caught up'}
+                    </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button onClick={fetchNotifications} variant="outline" size="sm">
-                        <RefreshCw className="h-4 w-4 mr-2" />
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => fetchNotifications(true)} variant="outline" size="sm" className="h-8 text-xs">
+                        <RefreshCw className="h-3 w-3 mr-1.5" />
                         Refresh
                     </Button>
                     {data.unreadCount > 0 && (
-                        <Button onClick={markAllAsRead} variant="outline" size="sm">
-                            <CheckCheck className="h-4 w-4 mr-2" />
+                        <Button onClick={markAllAsRead} variant="outline" size="sm" className="h-8 text-xs">
+                            <CheckCheck className="h-3 w-3 mr-1.5" />
                             Mark All Read
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Total Revenue (Deposits)</CardTitle>
-                        <DollarSign className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">KSH {totalRevenue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">From deposit payments</p>
+            {/* Compact Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+                <Card className="border">
+                    <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Revenue</p>
+                                <p className="text-sm font-semibold mt-0.5">KES {totalRevenue.toLocaleString()}</p>
+                            </div>
+                            <DollarSign className="h-4 w-4 text-green-600" />
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Bookings Today</CardTitle>
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{todayBookings}</div>
-                        <p className="text-xs text-muted-foreground">New bookings confirmed</p>
+                <Card className="border">
+                    <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Today</p>
+                                <p className="text-sm font-semibold mt-0.5">{todayBookings}</p>
+                            </div>
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Total Reschedules</CardTitle>
-                        <RefreshCw className="h-4 w-4 text-amber-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalReschedules}</div>
-                        <p className="text-xs text-muted-foreground">Booking changes</p>
+                <Card className="border">
+                    <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pending</p>
+                                <p className="text-sm font-semibold mt-0.5">{pendingEscalations}</p>
+                            </div>
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Notifications List */}
+            {/* Main Notifications Card */}
             <Card>
-                <CardHeader>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <CardTitle>All Notifications</CardTitle>
+                <CardHeader className="pb-3 px-4 pt-4">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">All Notifications</CardTitle>
                         {data.unreadCount > 0 && (
-                            <Badge variant="secondary">{data.unreadCount} Unread</Badge>
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5">
+                                {data.unreadCount}
+                            </Badge>
                         )}
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-2 xs:grid-cols-4 overflow-x-auto gap-2">
-                            <TabsTrigger value="all">All</TabsTrigger>
-                            <TabsTrigger value="booking">Bookings</TabsTrigger>
-                            <TabsTrigger value="payment">Payments</TabsTrigger>
-                            <TabsTrigger value="reschedule">Reschedules</TabsTrigger>
-                        </TabsList>
+                <CardContent className="px-4 pb-4">
+                    {/* Filters and Tabs */}
+                    <div className="space-y-3 mb-4">
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <TabsList className="h-8 w-full grid grid-cols-5">
+                                <TabsTrigger value="all" className="text-[11px] px-2">All</TabsTrigger>
+                                <TabsTrigger value="booking" className="text-[11px] px-2">Bookings</TabsTrigger>
+                                <TabsTrigger value="payment" className="text-[11px] px-2">Payments</TabsTrigger>
+                                <TabsTrigger value="reschedule" className="text-[11px] px-2">Reschedules</TabsTrigger>
+                                <TabsTrigger value="ai_escalation" className="text-[11px] px-2">Escalations</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
 
-                        <TabsContent value={activeTab} className="space-y-4 mt-4">
-                            {/* Section header and search/filter */}
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Bell className="h-5 w-5 text-primary" />
-                                    <span className="text-lg font-semibold text-primary">All Notifications</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={e => setSearch(e.target.value)}
-                                        placeholder="Search notifications..."
-                                        className="border rounded-md px-2 py-1 text-sm w-full sm:w-48 focus:outline-none focus:ring focus:ring-primary/30"
-                                    />
-                                    <select
-                                        value={filterRead}
-                                        onChange={e => setFilterRead(e.target.value as 'all' | 'read' | 'unread')}
-                                        className="border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring focus:ring-primary/30"
+                        {/* Search and Filter */}
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Search..."
+                                    className="h-8 pl-7 text-xs pr-2"
+                                />
+                                {search && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
+                                        onClick={() => setSearch('')}
                                     >
-                                        <option value="all">All</option>
-                                        <option value="unread">Unread</option>
-                                        <option value="read">Read</option>
-                                    </select>
-                                </div>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                )}
                             </div>
+                            <Select value={filterRead} onValueChange={(v) => setFilterRead(v as 'all' | 'read' | 'unread')}>
+                                <SelectTrigger className="h-8 w-28 text-xs">
+                                    <SelectValue placeholder="Filter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="unread">Unread</SelectItem>
+                                    <SelectItem value="read">Read</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Notifications List */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <TabsContent value={activeTab} className="mt-0 space-y-0">
                             {loading && page === 1 ? (
-                                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-                            ) : data.notifications.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    No notifications yet
+                                <div className="text-center py-8 text-xs text-muted-foreground">Loading...</div>
+                            ) : Object.keys(groupedNotifications).length === 0 ? (
+                                <div className="text-center py-8 text-xs text-muted-foreground">
+                                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                    <p>No notifications found</p>
                                 </div>
                             ) : (
-                                // Group notifications by date
-                                Object.entries(
-                                    data.notifications.reduce((groups, n) => {
-                                        const date = new Date(n.createdAt).toDateString();
-                                        if (!groups[date]) groups[date] = [];
-                                        groups[date].push(n);
-                                        return groups;
-                                    }, {} as { [date: string]: Notification[] })
-                                ).map(([date, notifs]) => (
-                                    <div key={date} className="mb-6">
-                                        <div className="text-xs font-semibold text-muted-foreground mb-2 mt-4 pl-1">
-                                            {date === new Date().toDateString() ? 'Today' : date}
-                                        </div>
-                                        {notifs.map((notification) => (
-                                            <div
-                                                key={notification.id}
-                                                onClick={() => !notification.read && markAsRead(notification.id)}
-                                                className={`flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border transition-all cursor-pointer relative overflow-hidden ${notification.read
-                                                    ? 'bg-background hover:bg-accent/50'
-                                                    : 'bg-accent/20 hover:bg-accent/30 border-primary/20 animate-pulse'} group`}
-                                            >
-                                                {/* Avatar/Icon */}
-                                                <div className="mt-1 flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-tr from-primary/10 to-primary/30 shadow">
-                                                    {getIcon(notification.type)}
-                                                </div>
-
-                                                <div className="flex-1 space-y-1 w-full">
-                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                                                        <h4 className="font-semibold text-base">{notification.title}</h4>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge className={getTypeColor(notification.type)} variant="secondary">
-                                                                {notification.type}
-                                                            </Badge>
-                                                            {!notification.read && (
-                                                                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Expand/collapse for long messages */}
-                                                    <p className="text-sm text-muted-foreground break-words">
-                                                        {notification.message.length > 120 ? (
-                                                            <>
-                                                                {expandedMap[notification.id] ? notification.message : notification.message.slice(0, 120) + '...'}
-                                                                <Button variant="link" size="sm" className="ml-2 px-1 py-0 h-auto text-xs" onClick={e => {e.stopPropagation(); toggleExpanded(notification.id);}}>
-                                                                    {expandedMap[notification.id] ? 'Show less' : 'Show more'}
-                                                                </Button>
-                                                            </>
-                                                        ) : (
-                                                            notification.message
-                                                        )}
-                                                    </p>
-
-                                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs text-muted-foreground pt-1">
-                                                        <span>{formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}</span>
-                                                        {notification.metadata?.receipt && (
-                                                            <span>Receipt: {notification.metadata.receipt}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {!notification.read && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            markAsRead(notification.id);
-                                                        }}
-                                                        className="self-end sm:self-auto"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {/* Divider */}
-                                                <div className="absolute left-0 bottom-0 w-full h-px bg-border opacity-40" />
+                                <div className="space-y-4">
+                                    {Object.entries(groupedNotifications).map(([date, notifs]) => (
+                                        <div key={date}>
+                                            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                                                {getDateLabel(date)}
                                             </div>
-                                        ))}
-                                    </div>
-                                ))
+                                            <div className="space-y-1">
+                                                {notifs.map((notification) => {
+                                                    const isExpanded = expandedMap[notification.id];
+                                                    const shouldTruncate = notification.message.length > 100;
+                                                    const displayMessage = shouldTruncate && !isExpanded
+                                                        ? notification.message.slice(0, 100) + '...'
+                                                        : notification.message;
+
+                                                    return (
+                                                        <div
+                                                            key={notification.id}
+                                                            onClick={() => !notification.read && markAsRead(notification.id)}
+                                                            className={`group relative flex items-start gap-2.5 p-2.5 rounded-md border transition-all cursor-pointer ${
+                                                                notification.read
+                                                                    ? 'bg-background hover:bg-muted/50 border-border'
+                                                                    : 'bg-muted/30 hover:bg-muted/50 border-primary/30'
+                                                            }`}
+                                                        >
+                                                            {/* Icon */}
+                                                            <div className={`mt-0.5 flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-md ${
+                                                                notification.read ? 'bg-muted' : 'bg-primary/10'
+                                                            }`}>
+                                                                {getIcon(notification.type)}
+                                                            </div>
+
+                                                            {/* Content */}
+                                                            <div className="flex-1 min-w-0 space-y-1">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                                                            <h4 className={`text-xs font-medium truncate ${
+                                                                                notification.read ? 'text-foreground' : 'text-foreground font-semibold'
+                                                                            }`}>
+                                                                                {notification.title}
+                                                                            </h4>
+                                                                            {!notification.read && (
+                                                                                <div className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                                                            {displayMessage}
+                                                                            {shouldTruncate && (
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        toggleExpanded(notification.id);
+                                                                                    }}
+                                                                                    className="ml-1 text-primary hover:underline text-[11px]"
+                                                                                >
+                                                                                    {isExpanded ? 'Show less' : 'Show more'}
+                                                                                </button>
+                                                                            )}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                                        <Badge 
+                                                                            variant="outline" 
+                                                                            className={`text-[10px] px-1.5 py-0 h-4 border ${getTypeColor(notification.type)}`}
+                                                                        >
+                                                                            {getTypeLabel(notification.type)}
+                                                                        </Badge>
+                                                                        {!notification.read && (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="ghost"
+                                                                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    markAsRead(notification.id);
+                                                                                }}
+                                                                            >
+                                                                                <Check className="h-3 w-3" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Metadata */}
+                                                                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                                                    <span>{formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}</span>
+                                                                    {notification.metadata?.customerName && (
+                                                                        <span className="truncate">• {notification.metadata.customerName}</span>
+                                                                    )}
+                                                                    {notification.metadata?.receipt && (
+                                                                        <span>• Receipt: {notification.metadata.receipt}</span>
+                                                                    )}
+                                                                    {notification.metadata?.bookingService && (
+                                                                        <span className="truncate">• {notification.metadata.bookingService}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
-                            {/* Pagination: Load more button */}
+
+                            {/* Load More */}
                             {hasMore && !loading && (
-                                <div className="flex justify-center mt-4">
-                                    <Button variant="outline" size="sm" onClick={loadMore}>
+                                <div className="flex justify-center pt-2">
+                                    <Button variant="outline" size="sm" onClick={loadMore} className="h-7 text-xs">
                                         Load More
                                     </Button>
                                 </div>

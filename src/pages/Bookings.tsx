@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPackageColor } from '@/utils/packageColors';
 import { DayContentProps } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 
 interface Booking {
   id: string;
@@ -230,9 +231,13 @@ export default function Bookings() {
       // Format local date as YYYY-MM-DD
       const pad = (n: number) => n.toString().padStart(2, '0');
       const localDateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+      console.log('DEBUG: Fetching available hours for date:', localDateStr, 'service:', selectedService);
       const hours = await getAvailableHours(localDateStr, selectedService);
+      console.log('DEBUG: Available hours response:', hours);
       setAvailableHours(hours);
+      console.log('DEBUG: Available hours set in state:', hours);
     } catch (error) {
+      console.log('DEBUG: Error fetching available hours:', error);
       toast({
         title: 'Error',
         description: 'Failed to load available hours',
@@ -655,15 +660,15 @@ export default function Bookings() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-subtle-bg p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
 
         {/* Payment Pending Modal */}
         <Dialog open={isPaymentPending}>
           <DialogContent className="sm:max-w-md">
             <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-2" />
-              <h3 className="text-lg font-semibold">Waiting for Payment</h3>
+              <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-primary mb-3 shadow-lg shadow-primary/20" />
+              <h3 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Waiting for Payment</h3>
               <p className="text-center text-muted-foreground max-w-xs">
                 Please complete the payment on your phone to confirm your booking.
               </p>
@@ -671,159 +676,158 @@ export default function Bookings() {
           </DialogContent>
         </Dialog>
 
-
-
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Bookings</h1>
-            <p className="text-muted-foreground mt-1 text-lg">
-              Manage appointments and schedules
-            </p>
-          </div>
+        <PageHeader
+          title="Bookings"
+          description="Manage appointments and schedules"
+          actions={
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="shadow-md hover:shadow-lg transition-all">
+                  <Plus className="mr-2 h-5 w-5" />
+                  New Booking
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-border/50 shadow-2xl">
+                <DialogHeader className="border-b border-border/50 pb-4">
+                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    Create New Booking
+                  </DialogTitle>
+                </DialogHeader>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" className="shadow-sm">
-                <Plus className="mr-2 h-5 w-5" />
-                New Booking
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-2xl">Create New Booking</DialogTitle>
-              </DialogHeader>
+                <div className="grid gap-6 py-6">
+                  <div className="grid gap-2">
+                    <Label htmlFor="recipientName">Customer Name</Label>
+                    <Input
+                      id="recipientName"
+                      value={recipientName}
+                      onChange={e => setRecipientName(e.target.value)}
+                      placeholder="Enter customer name"
+                      className="h-11"
+                    />
+                  </div>
 
-              <div className="grid gap-6 py-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="recipientName">Customer Name</Label>
-                  <Input
-                    id="recipientName"
-                    value={recipientName}
-                    onChange={e => setRecipientName(e.target.value)}
-                    placeholder="Enter customer name"
-                    className="h-11"
-                  />
-                </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="recipientPhone">Phone Number</Label>
+                    <Input
+                      id="recipientPhone"
+                      value={recipientPhone}
+                      onChange={e => setRecipientPhone(e.target.value)}
+                      placeholder="Enter phone number"
+                      className="h-11"
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="recipientPhone">Phone Number</Label>
-                  <Input
-                    id="recipientPhone"
-                    value={recipientPhone}
-                    onChange={e => setRecipientPhone(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="h-11"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Package</Label>
-                  <Select value={selectedPackage} onValueChange={val => {
-                    setSelectedPackage(val);
-                    const pkg = getPackageById(val);
-                    if (pkg) setSelectedService(pkg.name);
-                  }}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select a package" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(packages) && packages.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          <div className="flex items-center justify-between w-full gap-2">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: getPackageColor(pkg.name) }}
-                              />
-                              <span>{pkg.name}</span>
+                  <div className="grid gap-2">
+                    <Label>Package</Label>
+                    <Select value={selectedPackage} onValueChange={val => {
+                      setSelectedPackage(val);
+                      const pkg = getPackageById(val);
+                      if (pkg) setSelectedService(pkg.name);
+                    }}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select a package" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(packages) && packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: getPackageColor(pkg.name) }}
+                                />
+                                <span>{pkg.name}</span>
+                              </div>
+                              <span className="text-muted-foreground text-sm">{pkg.price}</span>
                             </div>
-                            <span className="text-muted-foreground text-sm">{pkg.price}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid gap-2">
+                      <Label>Date</Label>
+                      <div className="border rounded-md p-2 flex justify-center">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          className="rounded-md"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Time</Label>
+                      <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
+                        {availableHours.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                            <Clock className="h-8 w-8 mb-2 opacity-20" />
+                            <p className="text-sm">No available times.</p>
+                            <p className="text-xs mt-1">Select a date and package first.</p>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2 p-2">
+                            {availableHours.map(({ time, available }) => {
+                              const d = new Date(time);
+                              const timeStr = d.toTimeString().split(' ')[0];
+                              const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              const isSelected = selectedTime === timeStr;
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="grid gap-2">
-                    <Label>Date</Label>
-                    <div className="border rounded-md p-2 flex justify-center">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        className="rounded-md"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>Time</Label>
-                    <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
-                      {availableHours.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-                          <Clock className="h-8 w-8 mb-2 opacity-20" />
-                          <p className="text-sm">No available times.</p>
-                          <p className="text-xs mt-1">Select a date and package first.</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2 p-2">
-                          {availableHours.map(({ time, available }) => {
-                            const d = new Date(time);
-                            const timeStr = d.toTimeString().split(' ')[0];
-                            const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            const isSelected = selectedTime === timeStr;
-
-                            return (
-                              <Button
-                                key={time}
-                                variant={isSelected ? "default" : "outline"}
-                                disabled={!available}
-                                onClick={() => setSelectedTime(timeStr)}
-                                className={`w-full justify-start ${!available ? 'opacity-50' : ''}`}
-                                size="sm"
-                              >
-                                {label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      )}
+                              return (
+                                <Button
+                                  key={time}
+                                  variant={isSelected ? "default" : "outline"}
+                                  disabled={!available}
+                                  onClick={() => setSelectedTime(timeStr)}
+                                  className={`w-full justify-start ${!available ? 'opacity-50' : ''}`}
+                                  size="sm"
+                                >
+                                  {label}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateBooking}
-                  disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
-                  size="lg"
-                >
-                  {creating ? 'Creating...' : 'Confirm Booking'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateBooking}
+                    disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
+                    size="lg"
+                  >
+                    {creating ? 'Creating...' : 'Confirm Booking'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          }
+        />
 
         {/* Full-Width Calendar Section */}
-        <Card className="border-none shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-blue-600 to-indigo-600 pb-6">
+        <Card className="border-border/50 shadow-xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 pb-6 shadow-lg">
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
-                <CalendarIcon className="h-7 w-7" />
+                <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                  <CalendarIcon className="h-6 w-6" />
+                </div>
                 Booking Calendar
               </CardTitle>
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-md hover:shadow-lg transition-all"
                 onClick={handleSyncCalendar}
                 disabled={syncing}
               >
@@ -832,7 +836,7 @@ export default function Bookings() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-8 bg-white">
+          <CardContent className="p-6 sm:p-8 bg-card">
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Left: Large Calendar */}
               <div className="flex justify-center items-start">
@@ -875,23 +879,23 @@ export default function Bookings() {
                     }
 
                     return bookingsForDay.map(booking => (
-                      <div key={booking.id} className="group flex items-start gap-4 p-4 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-all border border-transparent hover:border-blue-200 hover:shadow-md">
-                        <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
+                      <div key={booking.id} className="group flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-muted/50 to-background hover:from-primary/5 hover:to-muted/50 transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md">
+                        <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0 shadow-sm ring-2 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-base text-gray-900 truncate">{booking.customerName}</p>
-                          <p className="text-sm text-gray-600 mt-1">{booking.service}</p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                          <p className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{booking.service}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                             <Clock className="h-4 w-4" />
                             {booking.time}
                           </div>
                           {booking.googleEventId && (
-                            <div className="flex items-center gap-1 text-xs text-green-600 mt-2">
-                              <CheckCircle className="h-3 w-3" />
+                            <div className="flex items-center gap-1.5 text-xs text-success font-medium mt-2">
+                              <CheckCircle className="h-3.5 w-3.5" />
                               Synced to Google Calendar
                             </div>
                           )}
                         </div>
-                        <Badge variant={getStatusVariant(booking.status)} className="capitalize">
+                        <Badge variant={getStatusVariant(booking.status)} className="capitalize shadow-sm">
                           {booking.status}
                         </Badge>
                       </div>
@@ -911,12 +915,15 @@ export default function Bookings() {
           >
 
             {/* Upcoming Bookings */}
-            <Card className="border-none shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Upcoming</CardTitle>
+            <Card className="border-border/50 shadow-lg">
+              <CardHeader className="pb-4 border-b border-border/50">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Upcoming
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-h-[400px] overflow-y-auto px-6 pb-6 space-y-4">
+                <div className="max-h-[400px] overflow-y-auto px-6 pb-6 space-y-4 scrollbar-custom">
                   {sortedDates.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>No upcoming bookings</p>
@@ -928,16 +935,16 @@ export default function Bookings() {
                           {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </h4>
                         {groupedBookings[dateStr].map(booking => (
-                          <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100">
-                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: getPackageColor(booking.service) }} />
+                          <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-lg bg-gradient-to-br from-muted/30 to-background hover:from-primary/5 hover:to-muted/30 transition-all duration-200 border border-border/30 hover:border-primary/20 hover:shadow-sm">
+                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0 ring-1 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-gray-900 truncate">{booking.customerName}</p>
-                              <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                              <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                 <Clock className="h-3 w-3" />
                                 {booking.time}
                               </div>
                             </div>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 border-border/50 shadow-sm">
                               {booking.service}
                             </Badge>
                           </div>
@@ -983,10 +990,12 @@ export default function Bookings() {
             </div>
 
             {/* Daily Timeline */}
-            <Card className="border-none shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+            <Card className="border-border/50 shadow-lg">
+              <CardHeader className="pb-4 border-b border-border/50">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
                   Daily Timeline
                 </CardTitle>
               </CardHeader>
@@ -997,8 +1006,8 @@ export default function Bookings() {
 
 
             {/* Table Card */}
-            <Card className="border-none shadow-md overflow-hidden bg-white">
-              <div className="overflow-x-auto">
+            <Card className="border-border/50 shadow-lg overflow-hidden">
+              <div className="overflow-x-auto scrollbar-custom">
                 <DataTable
                   data={filteredBookings}
                   columns={columns}

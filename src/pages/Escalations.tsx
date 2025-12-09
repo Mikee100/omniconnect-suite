@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { format } from 'date-fns';
 import {
     Table,
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { io, Socket } from 'socket.io-client';
 
 interface Escalation {
     id: string;
@@ -33,6 +34,7 @@ export default function Escalations() {
     const [escalations, setEscalations] = useState<Escalation[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const socketRef = useRef<Socket | null>(null);
 
     const fetchEscalations = async () => {
         try {
@@ -47,8 +49,74 @@ export default function Escalations() {
         }
     };
 
+    // Request browser notification permission
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
+
+    // Show browser notification
+    const showBrowserNotification = (escalation: Escalation) => {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const customerName = escalation.customer?.name || 'Unknown Customer';
+            new Notification('New Escalation', {
+                body: `${customerName} needs assistance: ${escalation.reason || 'No reason provided'}`,
+                icon: '/favicon.ico',
+                tag: `escalation-${escalation.id}`,
+            });
+        }
+    };
+
     useEffect(() => {
         fetchEscalations();
+        
+        // Initialize WebSocket connection
+        socketRef.current = io(API_BASE_URL, {
+            transports: ['websocket', 'polling'],
+        });
+
+        socketRef.current.on('connect', () => {
+            console.log('Connected to WebSocket for escalations');
+            // Join the admin room to receive escalation events
+            socketRef.current?.emit('join', { platform: 'admin' });
+        });
+
+        socketRef.current.on('disconnect', () => {
+            console.log('Disconnected from WebSocket');
+        });
+
+        // Listen for new escalations
+        socketRef.current.on('newEscalation', (escalation: Escalation) => {
+            console.log('New escalation received:', escalation);
+            setEscalations(prev => {
+                // Check if escalation already exists
+                if (prev.find(e => e.id === escalation.id)) {
+                    return prev;
+                }
+                // Add new escalation at the beginning
+                return [escalation, ...prev];
+            });
+            showBrowserNotification(escalation);
+        });
+
+        // Listen for escalation resolved
+        socketRef.current.on('escalationResolved', ({ escalationId }: { escalationId: string }) => {
+            console.log('Escalation resolved:', escalationId);
+            setEscalations(prev => prev.filter(e => e.id !== escalationId));
+        });
+
+        // Auto-refresh every 30 seconds (fallback)
+        const interval = setInterval(() => {
+            fetchEscalations();
+        }, 30000);
+
+        return () => {
+            clearInterval(interval);
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+        };
     }, []);
 
     const handleResolve = async (id: string) => {

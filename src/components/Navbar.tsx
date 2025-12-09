@@ -15,14 +15,16 @@ import { Badge } from '@/components/ui/badge';
 import { Moon, Sun, LogOut, User, Bell, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { API_BASE_URL } from '@/config';
+import { io, Socket } from 'socket.io-client';
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme, sidebarCollapsed, setMobileMenuOpen } = useUIStore();
   const isDesktop = useIsDesktop();
   const [unreadCount, setUnreadCount] = useState(0);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     // Fetch unread count
@@ -38,9 +40,43 @@ export function Navbar() {
     };
 
     fetchUnreadCount();
-    // Refresh every 30 seconds
+
+    // Initialize WebSocket connection for real-time notification updates
+    socketRef.current = io(API_BASE_URL, {
+      transports: ['websocket', 'polling'],
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('Navbar: Connected to WebSocket');
+      // Join the admin room to receive notification events
+      socketRef.current?.emit('join', { platform: 'admin' });
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('Navbar: Disconnected from WebSocket');
+    });
+
+    // Listen for notification count updates
+    socketRef.current.on('notificationCountUpdate', () => {
+      console.log('Navbar: Notification count update received');
+      fetchUnreadCount();
+    });
+
+    // Listen for new notifications
+    socketRef.current.on('newNotification', () => {
+      console.log('Navbar: New notification received');
+      fetchUnreadCount();
+    });
+
+    // Refresh every 30 seconds (fallback)
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   const initials = user?.name
@@ -52,7 +88,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        'sticky top-0 w-full z-30 h-16 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 transition-all duration-300',
+        'sticky top-0 w-full z-30 h-16 border-b border-border/50 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/60 transition-all duration-300 shadow-sm',
         'ml-4 sm:ml-6 lg:ml-0'
       )}
     >
@@ -64,31 +100,31 @@ export function Navbar() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="tap-target -ml-2"
+              className="tap-target -ml-2 hover:bg-accent rounded-lg transition-all"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          <h2 className="text-base sm:text-lg font-semibold text-foreground truncate max-w-[200px] sm:max-w-none">
+          <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent truncate max-w-[200px] sm:max-w-none">
             Business Automation
           </h2>
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* Notifications */}
           <Link to="/notifications">
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-muted-foreground hover:text-foreground tap-target transition-all hover:scale-110"
+              className="relative text-muted-foreground hover:text-foreground hover:bg-accent tap-target transition-all duration-200 hover:scale-110 rounded-lg"
               aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5 transition-transform group-hover:animate-pulse-soft" />
               {unreadCount > 0 && (
                 <Badge
-                  className="absolute -right-1 -top-1 h-5 min-w-5 px-1 flex items-center justify-center bg-destructive text-destructive-foreground text-xs font-semibold animate-scaleIn"
+                  className="absolute -right-1 -top-1 h-5 min-w-5 px-1.5 flex items-center justify-center bg-gradient-to-r from-destructive to-destructive/90 text-destructive-foreground text-xs font-bold animate-scaleIn shadow-lg"
                   variant="default"
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -102,7 +138,7 @@ export function Navbar() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="text-muted-foreground hover:text-foreground tap-target transition-all hover:scale-110 hover:rotate-12"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent tap-target transition-all duration-200 hover:scale-110 hover:rotate-12 rounded-lg"
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >
             {theme === 'light' ? (
@@ -115,30 +151,30 @@ export function Navbar() {
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full tap-target group">
-                <Avatar className="h-10 w-10 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
-                  <AvatarFallback className="bg-gradient-primary text-white font-semibold">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full tap-target group hover:ring-2 hover:ring-primary/20 transition-all duration-200">
+                <Avatar className="h-10 w-10 ring-2 ring-transparent group-hover:ring-primary/30 transition-all shadow-md">
+                  <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white font-bold shadow-lg">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 animate-scaleIn">
+            <DropdownMenuContent align="end" className="w-56 animate-scaleIn shadow-xl border-border/50 backdrop-blur-sm">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.name}</p>
+                  <p className="text-sm font-semibold">{user?.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer tap-target">
+              <DropdownMenuItem className="cursor-pointer tap-target transition-colors">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={logout}
-                className="text-destructive focus:text-destructive cursor-pointer tap-target"
+                className="text-destructive focus:text-destructive cursor-pointer tap-target transition-colors"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out

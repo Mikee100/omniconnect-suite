@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 
 type PlatformType = 'all' | 'whatsapp' | 'messenger' | 'instagram' | 'other';
 
@@ -186,87 +187,77 @@ const Customers = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Customers</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Manage and communicate with your customer base
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Customer</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Customers"
+        description="Manage and communicate with your customer base"
+        actions={
+          <>
+            <Button variant="outline" size="sm" className="gap-2 shadow-sm hover:shadow-md transition-all">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button size="sm" className="gap-2 shadow-md hover:shadow-lg transition-all">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Customer</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="border-border">
-            <CardContent className="pt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Total Customers</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Customers</p>
+                  <p className="text-3xl font-bold">{stats.total}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 shadow-sm">
+                  <Users className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border">
-            <CardContent className="pt-4">
+          <Card className="border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">AI Active</p>
-                  <p className="text-2xl font-bold">{stats.aiActive}</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">AI Active</p>
+                  <p className="text-3xl font-bold">{stats.aiActive}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-green-100">
-                  <Sparkles className="h-5 w-5 text-green-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 shadow-sm">
+                  <Sparkles className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border">
-            <CardContent className="pt-4">
+          <Card className="border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">WhatsApp</p>
-                  <p className="text-2xl font-bold">{stats.whatsapp}</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">WhatsApp</p>
+                  <p className="text-3xl font-bold">{stats.whatsapp}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-green-100">
-                  <i className="fab fa-whatsapp text-green-600 text-lg" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 shadow-sm">
+                  <i className="fab fa-whatsapp text-green-600 dark:text-green-400 text-xl" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border">
-            <CardContent className="pt-4">
+          <Card className="border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Engagement Rate</p>
-                  <p className="text-2xl font-bold">{Math.round((stats.aiActive / stats.total) * 100)}%</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Engagement Rate</p>
+                  <p className="text-3xl font-bold">{Math.round((stats.aiActive / stats.total) * 100)}%</p>
                 </div>
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 shadow-sm">
+                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -275,8 +266,8 @@ const Customers = () => {
       )}
 
       {/* Filters and Search */}
-      <Card className="border-border">
-        <CardContent className="pt-4">
+      <Card className="border-border/50 shadow-md">
+        <CardContent className="pt-6">
           <div className="flex flex-col gap-4">
             {/* Search Bar */}
             <div className="relative">
@@ -367,12 +358,15 @@ const Customers = () => {
       </Card>
 
       {/* Customers Table */}
-      <Card className="border-border">
-        <CardHeader className="pb-3">
+      <Card className="border-border/50 shadow-md">
+        <CardHeader className="pb-4 border-b border-border/50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <CardTitle className="text-base font-semibold">Customer Directory</CardTitle>
-              <CardDescription className="text-sm">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Customer Directory
+              </CardTitle>
+              <CardDescription className="text-sm mt-1">
                 {filteredCustomers.length} customer{filteredCustomers.length !== 1 ? 's' : ''} found
               </CardDescription>
             </div>
@@ -444,7 +438,7 @@ const Customers = () => {
                     return (
                       <TableRow
                         key={customer.id}
-                        className="group hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="group hover:bg-muted/50 transition-all duration-200 cursor-pointer hover:shadow-sm"
                         onClick={() => navigate(`/customers/${customer.id}`)}
                       >
                         <TableCell>

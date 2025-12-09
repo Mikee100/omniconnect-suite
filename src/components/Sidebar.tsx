@@ -71,26 +71,29 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-40',
+          'fixed left-0 top-0 h-screen bg-card/95 backdrop-blur-xl border-r border-border/50 transition-all duration-300 z-40 shadow-lg',
           // Desktop behavior
-          isDesktop && (sidebarCollapsed ? 'w-16' : 'w-48'),
+          isDesktop && (sidebarCollapsed ? 'w-16' : 'w-64'),
           // Mobile behavior
-          !isDesktop && 'w-48',
+          !isDesktop && 'w-64',
           !isDesktop && (showSidebar ? 'translate-x-0' : '-translate-x-full'),
           // Shadow for mobile overlay
-          !isDesktop && 'shadow-xl'
+          !isDesktop && 'shadow-2xl'
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        <div className="flex h-16 items-center justify-between border-b border-border/50 px-4 bg-card/50 backdrop-blur-sm">
           {!sidebarCollapsed && (
-            <div className="flex items-center gap-2 animate-fadeIn">
-              <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <div className="flex items-center gap-3 animate-fadeIn">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
                 <LayoutDashboard className="h-5 w-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Admin
-              </h1>
+              <div>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  Admin Panel
+                </h1>
+                <p className="text-[10px] text-muted-foreground">Business Automation</p>
+              </div>
             </div>
           )}
 
@@ -99,13 +102,16 @@ export function Sidebar() {
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className={cn("ml-auto tap-target transition-transform hover:scale-110", sidebarCollapsed && "mx-auto")}
+              className={cn(
+                "ml-auto tap-target transition-all duration-200 hover:bg-accent hover:scale-110 rounded-lg",
+                sidebarCollapsed && "mx-auto"
+              )}
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {sidebarCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 transition-transform" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 transition-transform" />
               )}
             </Button>
           ) : (
@@ -113,7 +119,7 @@ export function Sidebar() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(false)}
-              className="ml-auto tap-target"
+              className="ml-auto tap-target hover:bg-accent rounded-lg transition-all"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -121,7 +127,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-3 overflow-y-auto scrollbar-custom" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        <nav className="flex-1 space-y-1.5 p-3 overflow-y-auto scrollbar-custom" style={{ maxHeight: 'calc(100vh - 64px)' }}>
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -129,22 +135,24 @@ export function Sidebar() {
               end={item.href === '/'}
               onClick={handleLinkClick}
               className={cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all tap-target no-select',
-                'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 tap-target no-select',
+                'text-muted-foreground hover:text-foreground hover:bg-accent/60 hover:shadow-sm',
+                'active:scale-[0.98]',
                 sidebarCollapsed && isDesktop && 'justify-center'
               )}
-              activeClassName="bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-l-4 border-primary shadow-sm"
+              activeClassName="bg-gradient-to-r from-primary/15 via-primary/10 to-primary/5 text-primary font-semibold shadow-md shadow-primary/10 border-l-4 border-primary"
             >
               <item.icon className={cn(
-                "h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110",
+                "h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-3",
                 sidebarCollapsed && isDesktop && "h-6 w-6"
               )} />
               {!sidebarCollapsed && (
-                <span className="animate-fadeIn">{item.name}</span>
+                <span className="animate-fadeIn transition-all">{item.name}</span>
               )}
               {sidebarCollapsed && isDesktop && (
-                <span className="absolute left-full ml-6 px-2 py-1 bg-popover text-popover-foreground rounded-md text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg border border-border">
+                <span className="absolute left-full ml-4 px-3 py-2 bg-popover text-popover-foreground rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-xl border border-border z-50">
                   {item.name}
+                  <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rotate-45 bg-popover border-l border-b border-border"></span>
                 </span>
               )}
             </NavLink>
@@ -153,9 +161,10 @@ export function Sidebar() {
 
         {/* Footer - User info or branding could go here */}
         {!sidebarCollapsed && (
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-border/50 bg-card/30 backdrop-blur-sm">
               <div className="text-xs text-muted-foreground text-center animate-fadeIn">
-                © {new Date().getFullYear()} Business Admin
+                <p className="font-medium">© {new Date().getFullYear()}</p>
+                <p className="text-[10px] mt-0.5 opacity-70">Business Automation</p>
               </div>
           </div>
         )}

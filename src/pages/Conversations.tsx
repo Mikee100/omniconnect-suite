@@ -124,15 +124,20 @@ const ConversationsPage = () => {
   return (
     <div className="flex h-[calc(100vh-6rem)] gap-4 animate-fadeIn">
       {/* Sidebar - Conversation List */}
-      <Card className="w-80 flex flex-col overflow-hidden border-r bg-background">
-        <div className="p-4 border-b space-y-4">
-          <h2 className="text-xl font-bold">Conversations</h2>
+      <Card className="w-80 flex flex-col overflow-hidden border-r border-border/50 bg-background shadow-lg">
+        <div className="p-4 border-b border-border/50 space-y-4 bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <MessageSquare className="h-5 w-5 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Conversations</h2>
+          </div>
 
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search..."
-              className="pl-8"
+              placeholder="Search conversations..."
+              className="pl-9 h-10 bg-background border-border/50 focus:border-primary/50 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -160,33 +165,33 @@ const ConversationsPage = () => {
                   key={chat.id}
                   onClick={() => setSelectedChat(chat)}
                   className={cn(
-                    "flex items-start gap-3 p-4 text-left transition-colors hover:bg-muted/50 border-b last:border-0",
-                    selectedChat?.id === chat.id && "bg-muted"
+                    "flex items-start gap-3 p-4 text-left transition-all duration-200 hover:bg-muted/60 border-b border-border/30 last:border-0 group",
+                    selectedChat?.id === chat.id && "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary"
                   )}
                 >
-                  <Avatar>
+                  <Avatar className="ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
                     <AvatarFallback className={cn(
-                      "text-white",
-                      chat.platform === 'whatsapp' ? 'bg-green-500' :
-                        chat.platform === 'instagram' ? 'bg-purple-500' :
-                          chat.platform === 'messenger' ? 'bg-blue-500' : 'bg-gray-500'
+                      "text-white font-semibold shadow-md",
+                      chat.platform === 'whatsapp' ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                        chat.platform === 'instagram' ? 'bg-gradient-to-br from-purple-500 to-pink-500' :
+                          chat.platform === 'messenger' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-gray-500 to-gray-600'
                     )}>
                       {chat.name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold truncate">{chat.name}</span>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <span className="font-semibold truncate text-sm">{chat.name}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                         {formatDate(chat.lastMessageAt)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground truncate max-w-[140px]">
-                        {chat.lastMessageDirection === 'outbound' && 'You: '}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-muted-foreground truncate flex-1">
+                        {chat.lastMessageDirection === 'outbound' && <span className="text-primary font-medium">You: </span>}
                         {chat.lastMessage}
                       </p>
-                      {getPlatformIcon(chat.platform)}
+                      <div className="flex-shrink-0">{getPlatformIcon(chat.platform)}</div>
                     </div>
                   </div>
                 </button>
@@ -197,36 +202,36 @@ const ConversationsPage = () => {
       </Card>
 
       {/* Main Content - Chat View */}
-      <Card className="flex-1 flex flex-col overflow-hidden bg-background">
+      <Card className="flex-1 flex flex-col overflow-hidden bg-background shadow-lg">
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center justify-between bg-card">
+            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-card/80 backdrop-blur-sm shadow-sm">
               <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback className="bg-primary text-primary-foreground">
+                <Avatar className="ring-2 ring-primary/20">
+                  <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white font-semibold shadow-md">
                     {selectedChat.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold flex items-center gap-2">
+                  <h3 className="font-semibold flex items-center gap-2 text-base">
                     {selectedChat.name}
-                    <Badge variant="outline" className="text-xs font-normal">
+                    <Badge variant="outline" className="text-xs font-normal border-border/50">
                       {selectedChat.platform}
                     </Badge>
                   </h3>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-0.5">
                     {selectedChat.phone || selectedChat.instagramId || selectedChat.messengerId}
                     {selectedChat.isActive && (
-                      <span className="flex items-center text-green-500 ml-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse" />
+                      <span className="flex items-center text-green-600 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
                         Active
                       </span>
                     )}
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-accent rounded-lg transition-all">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </div>
@@ -247,22 +252,22 @@ const ConversationsPage = () => {
                       <div
                         key={msg.id}
                         className={cn(
-                          "flex w-full mb-2",
+                          "flex w-full mb-3 animate-slideUp",
                           isOutbound ? "justify-end" : "justify-start"
                         )}
                       >
                         <div
                           className={cn(
-                            "max-w-[70%] px-4 py-2 rounded-2xl text-sm relative group",
+                            "max-w-[70%] px-4 py-2.5 rounded-2xl text-sm relative group shadow-sm transition-all hover:shadow-md",
                             isOutbound
-                              ? "bg-primary text-primary-foreground rounded-tr-sm"
-                              : "bg-muted text-foreground rounded-tl-sm"
+                              ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-sm"
+                              : "bg-muted/80 text-foreground rounded-tl-sm border border-border/50"
                           )}
                         >
-                          <p>{msg.content}</p>
+                          <p className="leading-relaxed">{msg.content}</p>
                           <div className={cn(
-                            "text-[10px] mt-1 opacity-70 flex items-center gap-1",
-                            isOutbound ? "justify-end text-primary-foreground/80" : "text-muted-foreground"
+                            "text-[10px] mt-1.5 opacity-70 flex items-center gap-1.5",
+                            isOutbound ? "justify-end text-primary-foreground/90" : "text-muted-foreground"
                           )}>
                             {formatTime(msg.createdAt)}
                             {isOutbound && <CheckCheck className="h-3 w-3" />}
@@ -277,16 +282,20 @@ const ConversationsPage = () => {
             </ScrollArea>
 
             {/* Reply Input */}
-            <div className="p-4 border-t bg-card">
+            <div className="p-4 border-t border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
               <form onSubmit={handleSendReply} className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   disabled={sending}
-                  className="flex-1"
+                  className="flex-1 h-11 border-border/50 focus:border-primary/50 transition-all"
                 />
-                <Button type="submit" disabled={!replyText.trim() || sending}>
+                <Button 
+                  type="submit" 
+                  disabled={!replyText.trim() || sending}
+                  className="h-11 px-6 shadow-md hover:shadow-lg transition-all"
+                >
                   {sending ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
@@ -297,7 +306,7 @@ const ConversationsPage = () => {
               <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
                 <span>Press Enter to send</span>
                 {selectedChat.platform === 'instagram' || selectedChat.platform === 'messenger' ? (
-                  <span className="text-orange-500 flex items-center gap-1">
+                  <span className="text-orange-500 flex items-center gap-1.5 font-medium">
                     <Clock className="h-3 w-3" />
                     24h reply window applies
                   </span>
@@ -306,12 +315,12 @@ const ConversationsPage = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <MessageSquare className="h-8 w-8" />
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 animate-fadeIn">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-6 shadow-lg">
+              <MessageSquare className="h-10 w-10 text-primary/60" />
             </div>
-            <h3 className="text-lg font-semibold">No conversation selected</h3>
-            <p className="max-w-xs text-center mt-2">
+            <h3 className="text-xl font-bold text-foreground mb-2">No conversation selected</h3>
+            <p className="max-w-md text-center text-muted-foreground">
               Select a conversation from the sidebar to view messages and reply.
             </p>
           </div>

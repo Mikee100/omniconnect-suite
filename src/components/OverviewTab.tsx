@@ -62,22 +62,22 @@ const OverviewTab = () => {
       {/* Top KPI Cards */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Revenue */}
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50 group">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-3xl font-bold text-foreground">
+              <div className="space-y-2 flex-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</p>
+                <p className="text-3xl font-bold text-foreground group-hover:scale-105 transition-transform duration-200">
                   {formatCurrency(kpis?.revenue?.total || 0)}
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium text-green-600">
                     {kpis?.revenue?.count || 0} payments
                   </span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 group-hover:scale-110 transition-transform duration-200 shadow-sm">
                 <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
@@ -85,22 +85,22 @@ const OverviewTab = () => {
         </Card>
 
         {/* Average Booking Value */}
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50 group">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Avg Booking Value</p>
-                <p className="text-3xl font-bold text-foreground">
+              <div className="space-y-2 flex-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg Booking Value</p>
+                <p className="text-3xl font-bold text-foreground group-hover:scale-105 transition-transform duration-200">
                   {formatCurrency(kpis?.avgBookingValue || 0)}
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Package className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-blue-600">
                     Per booking
                   </span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 group-hover:scale-110 transition-transform duration-200 shadow-sm">
                 <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
@@ -108,22 +108,22 @@ const OverviewTab = () => {
         </Card>
 
         {/* Conversion Rate */}
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50 group">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
-                <p className="text-3xl font-bold text-foreground">
+              <div className="space-y-2 flex-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Conversion Rate</p>
+                <p className="text-3xl font-bold text-foreground group-hover:scale-105 transition-transform duration-200">
                   {kpis?.conversionRate?.rate?.toFixed(1) || 0}%
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium text-green-600">
                     {kpis?.conversionRate?.convertedCustomers || 0}/{kpis?.conversionRate?.totalCustomers || 0} customers
                   </span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30">
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 group-hover:scale-110 transition-transform duration-200 shadow-sm">
                 <Percent className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
@@ -131,22 +131,22 @@ const OverviewTab = () => {
         </Card>
 
         {/* Customer Lifetime Value */}
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50 group">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Customer CLV</p>
-                <p className="text-3xl font-bold text-foreground">
+              <div className="space-y-2 flex-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer CLV</p>
+                <p className="text-3xl font-bold text-foreground group-hover:scale-105 transition-transform duration-200">
                   {formatCurrency(kpis?.customerMetrics?.clv || 0)}
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Heart className="h-4 w-4 text-pink-600" />
                   <span className="text-sm font-medium text-pink-600">
                     Lifetime value
                   </span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-pink-100 dark:bg-pink-900/30">
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-pink-100 to-pink-50 dark:from-pink-900/30 dark:to-pink-800/20 group-hover:scale-110 transition-transform duration-200 shadow-sm">
                 <Heart className="h-6 w-6 text-pink-600 dark:text-pink-400" />
               </div>
             </div>
@@ -157,40 +157,46 @@ const OverviewTab = () => {
       {/* Secondary KPIs */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {/* Total Customers */}
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
-                <p className="text-2xl font-bold mt-2">{kpis?.customerMetrics?.totalCustomers || 0}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Customers</p>
+                <p className="text-3xl font-bold mt-2">{kpis?.customerMetrics?.totalCustomers || 0}</p>
               </div>
-              <Users className="h-8 w-8 text-muted-foreground" />
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Repeat Rate */}
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Repeat Rate</p>
-                <p className="text-2xl font-bold mt-2">{kpis?.customerMetrics?.repeatRate?.toFixed(1) || 0}%</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Repeat Rate</p>
+                <p className="text-3xl font-bold mt-2">{kpis?.customerMetrics?.repeatRate?.toFixed(1) || 0}%</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-muted-foreground" />
+              <div className="p-3 rounded-xl bg-success/10">
+                <TrendingUp className="h-8 w-8 text-success" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* New Customers (This Month) */}
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">New This Month</p>
-                <p className="text-2xl font-bold mt-2">{kpis?.customerMetrics?.newCustomersThisMonth || 0}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New This Month</p>
+                <p className="text-3xl font-bold mt-2">{kpis?.customerMetrics?.newCustomersThisMonth || 0}</p>
               </div>
-              <Calendar className="h-8 w-8 text-muted-foreground" />
+              <div className="p-3 rounded-xl bg-warning/10">
+                <Calendar className="h-8 w-8 text-warning" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -199,14 +205,16 @@ const OverviewTab = () => {
       {/* Charts Row */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Monthly Revenue Trend */}
-        <Card>
-          <CardHeader>
+        <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
               Monthly Revenue Trend
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={monthlyRevenue}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -230,14 +238,16 @@ const OverviewTab = () => {
         </Card>
 
         {/* Revenue by Package */}
-        <Card>
-          <CardHeader>
+        <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
               Revenue by Package
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -265,14 +275,16 @@ const OverviewTab = () => {
       {/* Seasonal Trends & Popular Packages */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Seasonal Trends */}
-        <Card>
-          <CardHeader>
+        <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
               Seasonal Trends (YoY)
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={seasonalTrends}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -290,14 +302,16 @@ const OverviewTab = () => {
         </Card>
 
         {/* Popular Packages */}
-        <Card>
-          <CardHeader>
+        <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
               Popular Packages
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="space-y-4">
               {kpis?.popularPackages?.slice(0, 5).map((pkg: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
@@ -319,11 +333,16 @@ const OverviewTab = () => {
       </div>
 
       {/* Package Performance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Package Performance</CardTitle>
+      <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+        <CardHeader className="border-b border-border/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+            Package Performance
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -336,11 +355,11 @@ const OverviewTab = () => {
               </thead>
               <tbody>
                 {revenueByPackage.map((pkg, index) => (
-                  <tr key={index} className="border-b hover:bg-accent/50 transition-colors">
-                    <td className="py-3 px-4 font-medium">{pkg.package}</td>
-                    <td className="text-right py-3 px-4">{formatCurrency(pkg.revenue)}</td>
-                    <td className="text-right py-3 px-4">{pkg.bookings}</td>
-                    <td className="text-right py-3 px-4">{formatCurrency(pkg.avgValue)}</td>
+                  <tr key={index} className="border-b hover:bg-accent/50 transition-colors cursor-pointer group">
+                    <td className="py-4 px-4 font-medium group-hover:text-primary transition-colors">{pkg.package}</td>
+                    <td className="text-right py-4 px-4 font-semibold group-hover:text-primary transition-colors">{formatCurrency(pkg.revenue)}</td>
+                    <td className="text-right py-4 px-4">{pkg.bookings}</td>
+                    <td className="text-right py-4 px-4">{formatCurrency(pkg.avgValue)}</td>
                   </tr>
                 ))}
               </tbody>
