@@ -227,7 +227,10 @@ export default function Bookings() {
   const fetchAvailableHours = async () => {
     if (!selectedDate || !selectedService) return;
     try {
-      const hours = await getAvailableHours(selectedDate.toISOString().split('T')[0], selectedService);
+      // Format local date as YYYY-MM-DD
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const localDateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+      const hours = await getAvailableHours(localDateStr, selectedService);
       setAvailableHours(hours);
     } catch (error) {
       toast({

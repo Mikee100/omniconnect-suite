@@ -19,21 +19,17 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full bg-background flex overflow-x-hidden">
       <Sidebar />
-      <div
-        className={cn(
-          'transition-all duration-300',
-          // Desktop: adjust margin based on sidebar state
-          isDesktop && (sidebarCollapsed ? 'ml-16' : 'ml-64'),
-          // Mobile: no left margin (sidebar is overlay)
-          !isDesktop && 'ml-0'
-        )}
-      >
+      <div className={cn(
+        "flex-1 flex flex-col transition-[margin-left] duration-300 ease-in-out",
+        isDesktop && (sidebarCollapsed ? "ml-16" : "ml-48"),
+        !isDesktop && "ml-0"
+      )}>
         <Navbar />
-        <main className="mt-16 p-4 sm:p-6 lg:p-8 animate-fadeIn">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 animate-fadeIn w-full">
           {children}
-        </main>
+        </div>
       </div>
     </div>
   );

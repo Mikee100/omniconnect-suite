@@ -1,12 +1,13 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCustomer, getCustomerMessages, toggleCustomerAi, getCustomerPhotoLinks, PhotoLink } from '../api/customers';
-import { getCustomerBookings, Booking } from '../api/bookings';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCustomer, getCustomerMessages, toggleCustomerAi, getCustomerPhotoLinks } from '../api/customers';
+import { getCustomerBookings } from '../api/bookings';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
   User,
@@ -19,17 +20,22 @@ import {
   Clock,
   Power,
   CalendarCheck,
+  Image as ImageIcon,
+  FileText,
+  TrendingUp,
+  Users,
+  Package,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import SendPhotoLinkCard from '../components/ui/SendPhotoLinkCard';
 import InvoiceCard from '../components/InvoiceCard';
 import { invoicesApi } from '../api/invoices';
+import { fetchActiveUsersStats, fetchEngagedCustomersStats, fetchPackagePopularityStats } from '../api/statistics';
 
 const CustomerDetailsPage = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
-
 
   const { data: customer, isLoading: customerLoading, refetch: refetchCustomer } = useQuery({
     queryKey: ['customer', customerId],
@@ -61,6 +67,22 @@ const CustomerDetailsPage = () => {
     enabled: !!customerId,
   });
 
+  // Statistics queries
+  const { data: activeUsersStats } = useQuery({
+    queryKey: ['active-users-stats'],
+    queryFn: fetchActiveUsersStats,
+  });
+
+  const { data: engagedCustomersStats } = useQuery({
+    queryKey: ['engaged-customers-stats'],
+    queryFn: fetchEngagedCustomersStats,
+  });
+
+  const { data: packagePopularityStats } = useQuery({
+    queryKey: ['package-popularity-stats'],
+    queryFn: fetchPackagePopularityStats,
+  });
+
   const handleToggleAi = async () => {
     if (!customer) return;
     try {
@@ -74,7 +96,7 @@ const CustomerDetailsPage = () => {
 
   if (customerLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -82,8 +104,8 @@ const CustomerDetailsPage = () => {
 
   if (!customer) {
     return (
-      <div className="p-4 text-red-500 bg-red-50 rounded-md">
-        Customer not found.
+      <div className="p-6 text-red-600 bg-red-50 rounded-lg border border-red-200">
+        Customer not found. Please check the customer ID and try again.
       </div>
     );
   }
@@ -94,130 +116,183 @@ const CustomerDetailsPage = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/customers')}>
-            <ArrowLeft className="h-5 w-5" />
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/customers')}
+            className="h-9 w-9 p-0"
+            aria-label="Back to customers"
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              {customer.name || 'Unknown Customer'}
-              <Badge
-                variant={customer.aiEnabled ? 'default' : 'secondary'}
-                className={customer.aiEnabled ? 'bg-green-500 hover:bg-green-600' : ''}
-              >
-                {customer.aiEnabled ? 'AI Active' : 'AI Paused'}
-              </Badge>
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Customer since {format(new Date(customer.createdAt), 'MMMM d, yyyy')}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                {customer.name ? customer.name.charAt(0).toUpperCase() : '?'}
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                {customer.platform === 'whatsapp' && (
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <i className="fab fa-whatsapp text-white text-xs" />
+                  </div>
+                )}
+                {customer.platform === 'instagram' && (
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+                    <i className="fab fa-instagram text-white text-xs" />
+                  </div>
+                )}
+                {customer.platform === 'messenger' && (
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                    <i className="fab fa-facebook-messenger text-white text-xs" />
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                {customer.name || 'Unknown Customer'}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Customer since {format(new Date(customer.createdAt), 'MMM d, yyyy')}
+              </p>
+            </div>
           </div>
         </div>
-        <Button onClick={handleToggleAi} variant="outline" className="gap-2">
-          <Power className="h-4 w-4" />
-          {customer.aiEnabled ? 'Disable AI' : 'Enable AI'}
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant={customer.aiEnabled ? 'default' : 'secondary'}
+            className={customer.aiEnabled ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' : ''}
+          >
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${customer.aiEnabled ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
+              {customer.aiEnabled ? 'AI Active' : 'AI Paused'}
+            </div>
+          </Badge>
+
+          {customer.phone && (
+            <Button variant="outline" size="sm" asChild className="h-9">
+              <a href={`tel:${customer.phone}`} className="flex items-center gap-2">
+                <Phone className="h-3.5 w-3.5" />
+                <span className="text-xs">Call</span>
+              </a>
+            </Button>
+          )}
+
+          {customer.email && (
+            <Button variant="outline" size="sm" asChild className="h-9">
+              <a href={`mailto:${customer.email}`} className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5" />
+                <span className="text-xs">Email</span>
+              </a>
+            </Button>
+          )}
+
+          <Button
+            onClick={handleToggleAi}
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2"
+          >
+            <Power className="h-3.5 w-3.5" />
+            <span className="text-xs">{customer.aiEnabled ? 'Disable AI' : 'Enable AI'}</span>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Customer Profile & Stats */}
-        <div className="lg:col-span-1 space-y-6">
+      <Separator />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Sidebar - Customer Info & Quick Stats */}
+        <div className="lg:col-span-1 space-y-4">
           {/* Profile Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
-                Profile
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Profile Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="font-medium">{customer.phone || 'N/A'}</p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Phone</p>
+                    <p className="text-sm font-medium">{customer.phone || 'Not provided'}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="font-medium">{customer.email || 'N/A'}</p>
+
+                <div className="flex items-start gap-3">
+                  <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="text-sm font-medium break-all">{customer.email || 'Not provided'}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Platform</p>
-                  <p className="font-medium capitalize">{customer.platform}</p>
+
+                <div className="flex items-start gap-3">
+                  <Activity className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Platform</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium capitalize">{customer.platform}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Last Updated</p>
-                  <p className="font-medium">
-                    {formatDistanceToNow(new Date(customer.updatedAt), { addSuffix: true })}
-                  </p>
+
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Last Updated</p>
+                    <p className="text-sm font-medium">
+                      {formatDistanceToNow(new Date(customer.updatedAt), { addSuffix: true })}
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Stats Card */}
+          {/* Communication Stats */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Statistics
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Communication Stats
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                <div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <p className="text-xs text-muted-foreground">Total Messages</p>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {messages?.length || 0}
-                  </p>
+                  <p className="text-xl font-semibold text-foreground">{messages?.length || 0}</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-blue-600 dark:text-blue-400 opacity-50" />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
-                <div>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Total Bookings</p>
+                  <p className="text-xl font-semibold text-foreground">{bookings?.length || 0}</p>
+                </div>
+                <div className="space-y-1.5">
                   <p className="text-xs text-muted-foreground">Received</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {inboundMessages.length}
-                  </p>
+                  <p className="text-lg font-semibold text-green-600">{inboundMessages.length}</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-green-600 dark:text-green-400 opacity-50" />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
-                <div>
+                <div className="space-y-1.5">
                   <p className="text-xs text-muted-foreground">Sent</p>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {outboundMessages.length}
-                  </p>
+                  <p className="text-lg font-semibold text-blue-600">{outboundMessages.length}</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-purple-600 dark:text-purple-400 opacity-50" />
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20">
-                <div>
-                  <p className="text-xs text-muted-foreground">Bookings</p>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {bookings?.length || 0}
-                  </p>
-                </div>
-                <CalendarCheck className="h-8 w-8 text-orange-600 dark:text-orange-400 opacity-50" />
-              </div>
+
               {lastMessage && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">Last Contact</p>
+                <div className="pt-3 border-t">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    Last Contact
                   </div>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium mt-1">
                     {formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true })}
                   </p>
                 </div>
@@ -225,187 +300,315 @@ const CustomerDetailsPage = () => {
             </CardContent>
           </Card>
 
-          <SendPhotoLinkCard customerId={customer.id} />
-
-          {/* Photo Links Card */}
+          {/* Photo Links */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
                 Photo Links
+                <Badge variant="outline" className="ml-auto text-xs font-normal">
+                  {photoLinks?.length || 0}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <SendPhotoLinkCard customerId={customer.id} />
+              
               {photoLinksLoading ? (
-                <div className="flex items-center justify-center h-24">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                 </div>
               ) : photoLinks?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">No photo links sent yet</p>
+                <div className="py-6 text-center">
+                  <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">No photo links sent yet</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {photoLinks?.map((photoLink) => (
+                <div className="space-y-3 mt-3">
+                  {photoLinks?.slice(0, 3).map((photoLink) => (
                     <div
                       key={photoLink.id}
-                      className="p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors"
+                      className="p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <a
-                            href={photoLink.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-sm text-primary hover:underline break-all"
-                          >
-                            {photoLink.link}
-                          </a>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(photoLink.sentAt), 'MMM d, yyyy • h:mm a')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <InvoiceCard
-            customerId={customer.id}
-            invoices={invoices || []}
-            isLoading={invoicesLoading}
-            onRefresh={refetchInvoices}
-          />
-
-        </div>
-
-        {/* Right Column - Conversation History */}
-        <div className="lg:col-span-2">
-          <Card className="h-[calc(100vh-12rem)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                Conversation History
-              </CardTitle>
-            </CardHeader>
-            <Separator />
-            <CardContent className="p-0">
-              <div className="h-[calc(100vh-18rem)] overflow-y-auto p-6 space-y-4">
-                {messagesLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : messages?.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <MessageSquare className="h-12 w-12 mb-2 opacity-20" />
-                    <p>No messages yet</p>
-                  </div>
-                ) : (
-                  messages?.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-lg p-4 ${message.direction === 'outbound'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                          }`}
+                      <a
+                        href={photoLink.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-primary hover:underline break-all"
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <p
-                            className={`text-xs ${message.direction === 'outbound'
-                              ? 'text-primary-foreground/70'
-                              : 'text-muted-foreground'
-                              }`}
-                          >
-                            {format(new Date(message.createdAt), 'MMM d, yyyy • h:mm a')}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${message.direction === 'outbound'
-                              ? 'border-primary-foreground/30 text-primary-foreground/70'
-                              : ''
-                              }`}
-                          >
-                            {message.direction === 'outbound' ? 'AI' : 'Customer'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          {/* Bookings History Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CalendarCheck className="h-5 w-5 text-primary" />
-                Bookings History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {bookingsLoading ? (
-                <div className="flex items-center justify-center h-24">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                </div>
-              ) : bookings?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
-                  <CalendarCheck className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">No bookings yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {bookings?.slice(0, 5).map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{booking.service}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(booking.dateTime), 'MMM d, yyyy • h:mm a')}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant={
-                            booking.status === 'confirmed'
-                              ? 'default'
-                              : booking.status === 'cancelled'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                          className="text-xs"
-                        >
-                          {booking.status}
-                        </Badge>
-                      </div>
+                        {photoLink.link}
+                      </a>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {format(new Date(photoLink.sentAt), 'MMM d, yyyy • h:mm a')}
+                      </p>
                     </div>
                   ))}
-                  {bookings && bookings.length > 5 && (
-                    <p className="text-xs text-center text-muted-foreground pt-2">
-                      Showing 5 of {bookings.length} bookings
+                  {photoLinks && photoLinks.length > 3 && (
+                    <p className="text-xs text-center text-muted-foreground pt-1">
+                      +{photoLinks.length - 3} more
                     </p>
                   )}
                 </div>
               )}
             </CardContent>
           </Card>
+        </div>
 
+        {/* Main Content Area */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Tabs for Main Content */}
+          <Tabs defaultValue="conversation" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-4">
+              <TabsTrigger value="conversation" className="text-xs">
+                <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                Conversation
+              </TabsTrigger>
+              <TabsTrigger value="bookings" className="text-xs">
+                <CalendarCheck className="h-3.5 w-3.5 mr-2" />
+                Bookings
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="text-xs">
+                <FileText className="h-3.5 w-3.5 mr-2" />
+                Invoices
+              </TabsTrigger>
+              <TabsTrigger value="insights" className="text-xs">
+                <TrendingUp className="h-3.5 w-3.5 mr-2" />
+                Insights
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Conversation Tab */}
+            <TabsContent value="conversation" className="mt-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Conversation History</CardTitle>
+                  <CardDescription className="text-xs">
+                    {messages?.length || 0} total messages • {inboundMessages.length} received • {outboundMessages.length} sent
+                  </CardDescription>
+                </CardHeader>
+                <Separator />
+                <CardContent className="p-0">
+                  <div className="h-[calc(100vh-16rem)] overflow-y-auto p-4 space-y-3">
+                    {messagesLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      </div>
+                    ) : messages?.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
+                        <MessageSquare className="h-10 w-10 mb-3 opacity-20" />
+                        <p className="text-sm">No messages yet</p>
+                        <p className="text-xs mt-1">Start a conversation with the customer</p>
+                      </div>
+                    ) : (
+                      messages?.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-xl p-3 ${message.direction === 'outbound'
+                              ? 'bg-primary text-primary-foreground rounded-br-none'
+                              : 'bg-muted rounded-bl-none'
+                              }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <p
+                                className={`text-xs ${message.direction === 'outbound'
+                                  ? 'text-primary-foreground/70'
+                                  : 'text-muted-foreground'
+                                  }`}
+                              >
+                                {format(new Date(message.createdAt), 'h:mm a')}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs h-5 ${message.direction === 'outbound'
+                                  ? 'border-primary-foreground/30 text-primary-foreground/70'
+                                  : ''
+                                  }`}
+                              >
+                                {message.direction === 'outbound' ? 'AI' : 'Customer'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Bookings Tab */}
+            <TabsContent value="bookings" className="mt-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Booking History</CardTitle>
+                  <CardDescription className="text-xs">
+                    {bookings?.length || 0} total bookings
+                  </CardDescription>
+                </CardHeader>
+                <Separator />
+                <CardContent>
+                  {bookingsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  ) : bookings?.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <CalendarCheck className="h-10 w-10 mb-3 opacity-20" />
+                      <p className="text-sm">No bookings yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {bookings?.map((booking) => (
+                        <div
+                          key={booking.id}
+                          className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{booking.service}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(booking.dateTime), 'MMM d, yyyy • h:mm a')}
+                            </div>
+                          </div>
+                          <Badge
+                            variant={
+                              booking.status === 'confirmed'
+                                ? 'default'
+                                : booking.status === 'cancelled'
+                                  ? 'destructive'
+                                  : 'secondary'
+                            }
+                            className="text-xs font-normal"
+                          >
+                            {booking.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Invoices Tab */}
+            <TabsContent value="invoices" className="mt-4">
+              <InvoiceCard
+                customerId={customer.id}
+                invoices={invoices || []}
+                isLoading={invoicesLoading}
+                onRefresh={refetchInvoices}
+              />
+            </TabsContent>
+
+            {/* Insights Tab */}
+            <TabsContent value="insights" className="mt-4 space-y-4">
+              {/* Engagement Stats */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Engagement Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-blue-600" />
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Active Users</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm">
+                          Daily: <span className="font-semibold">{activeUsersStats?.daily ?? '0'}</span>
+                        </p>
+                        <p className="text-sm">
+                          Weekly: <span className="font-semibold">{activeUsersStats?.weekly ?? '0'}</span>
+                        </p>
+                        <p className="text-sm">
+                          Monthly: <span className="font-semibold">{activeUsersStats?.monthly ?? '0'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-green-600" />
+                        <p className="text-xs font-medium text-green-700 dark:text-green-300">Top Customers</p>
+                      </div>
+                      {engagedCustomersStats?.slice(0, 2).map((c: any) => (
+                        <div key={c.id} className="text-sm">
+                          <p className="font-medium truncate">{c.name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {c._count?.messages ?? 0} messages • {c._count?.bookings ?? 0} bookings
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-purple-600" />
+                        <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Popular Packages</p>
+                      </div>
+                      {packagePopularityStats?.slice(0, 2).map((pkg: any) => (
+                        <div key={pkg.id} className="text-sm">
+                          <p className="font-medium truncate">{pkg.name}</p>
+                          <p className="text-xs text-muted-foreground">{pkg.bookings} bookings</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Customer Comparison */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Customer Comparison</CardTitle>
+                  <CardDescription className="text-xs">
+                    How this customer compares to others
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium">Message Frequency</p>
+                        <p className="text-xs text-muted-foreground">
+                          {messages?.length || 0} total • {(messages?.length || 0) > 10 ? 'High' : (messages?.length || 0) > 5 ? 'Medium' : 'Low'}
+                        </p>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className="bg-primary h-1.5 rounded-full"
+                          style={{ width: `${Math.min((messages?.length || 0) * 5, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium">Booking Rate</p>
+                        <p className="text-xs text-muted-foreground">
+                          {bookings?.length || 0} bookings • {(bookings?.length || 0) > 2 ? 'Frequent' : 'Occasional'}
+                        </p>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className="bg-green-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.min((bookings?.length || 0) * 20, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

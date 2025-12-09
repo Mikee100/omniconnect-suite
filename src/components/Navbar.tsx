@@ -52,8 +52,8 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        'fixed right-0 top-0 z-30 h-16 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 transition-all duration-300',
-        isDesktop ? (sidebarCollapsed ? 'left-16' : 'left-64') : 'left-0'
+        'sticky top-0 w-full z-30 h-16 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 transition-all duration-300',
+        'ml-4 sm:ml-6 lg:ml-0'
       )}
     >
       <div className="flex h-full items-center justify-between px-4 sm:px-6">
