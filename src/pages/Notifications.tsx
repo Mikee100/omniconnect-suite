@@ -276,7 +276,7 @@ export default function Notifications() {
                                 <TabsTrigger value="all" className="text-[11px] px-2">All</TabsTrigger>
                                 <TabsTrigger value="booking" className="text-[11px] px-2">Bookings</TabsTrigger>
                                 <TabsTrigger value="payment" className="text-[11px] px-2">Payments</TabsTrigger>
-                                <TabsTrigger value="reschedule" className="text-[11px] px-2">Reschedules</TabsTrigger>
+                                <TabsTrigger value="reschedule_request" className="text-[11px] px-2">Reschedules</TabsTrigger>
                                 <TabsTrigger value="ai_escalation" className="text-[11px] px-2">Escalations</TabsTrigger>
                             </TabsList>
                         </Tabs>

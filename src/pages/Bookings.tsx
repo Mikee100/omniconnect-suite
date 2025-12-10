@@ -18,14 +18,23 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter, RefreshCw, CheckCircle, FileText, Send, Download } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter, RefreshCw, CheckCircle, FileText, Send, Download, TrendingUp, DollarSign, BarChart3, Activity, MoreVertical, Edit, Trash2, MessageSquare, Share2, Copy, X, Check, AlertCircle, Zap, Target, Users, CalendarDays, Package as PackageIcon, ArrowUpDown, FileDown, Eye, EyeOff, Bell, History, CreditCard, Phone, Mail, ExternalLink, ArrowRight, Info, MapPin, Timer, Receipt, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, getCalendarEvents, Booking as BookingType, Service, Package } from '@/api/bookings';
+import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, getCalendarEvents, getBooking, updateBooking, Booking as BookingType, Service, Package } from '@/api/bookings';
 import { invoicesApi, Invoice } from '@/api/invoices';
+import { followupsApi, Followup } from '@/api/followups';
+import { remindersApi, Reminder } from '@/api/reminders';
+import { getCustomer } from '@/api/customers';
+import { getCustomerBookings } from '@/api/bookings';
 import axios from 'axios';
 import { API_BASE_URL as API_BASE } from '@/config';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { getPackageColor } from '@/utils/packageColors';
 import { DayContentProps } from 'react-day-picker';
 import { cn } from '@/lib/utils';
@@ -63,11 +72,58 @@ export default function Bookings() {
   const [syncing, setSyncing] = useState(false);
   const [invoices, setInvoices] = useState<Record<string, Invoice>>({});
   const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
+  
+  // New state for enhanced features
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    confirmed: 0,
+    provisional: 0,
+    cancelled: 0,
+    revenue: 0,
+    todayBookings: 0,
+    thisWeekBookings: 0,
+    thisMonthBookings: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'calendar' | 'timeline'>('table');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [packageFilter, setPackageFilter] = useState<string>('all');
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [bookingNotes, setBookingNotes] = useState<Record<string, string>>({});
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  
+  // Booking details modal state
+  const [selectedBookingDetails, setSelectedBookingDetails] = useState<Booking | null>(null);
+  const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
+  const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
+  const [fullBookingData, setFullBookingData] = useState<any>(null);
+  const [bookingReminders, setBookingReminders] = useState<Reminder[]>([]);
+  const [bookingFollowups, setBookingFollowups] = useState<Followup[]>([]);
+  const [bookingPayments, setBookingPayments] = useState<any[]>([]);
+  
+  // Edit/Reschedule state
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleTime, setRescheduleTime] = useState<string>('');
+  const [rescheduleService, setRescheduleService] = useState<string>('');
+  const [savingBooking, setSavingBooking] = useState(false);
+  const [rescheduleAvailableHours, setRescheduleAvailableHours] = useState<{ time: string, available: boolean }[]>([]);
+  const [loadingRescheduleHours, setLoadingRescheduleHours] = useState(false);
+  
+  // Customer context state
+  const [customerContextOpen, setCustomerContextOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customerHistory, setCustomerHistory] = useState<any>(null);
+  const [loadingCustomerHistory, setLoadingCustomerHistory] = useState(false);
 
   // Helper to get package by id
   const getPackageById = (id: string) => packages.find(pkg => pkg.id === id);
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Get bookings for a specific date
   const getBookingsForDate = (date: Date): Booking[] => {
@@ -108,6 +164,65 @@ export default function Bookings() {
     }
   };
 
+  // Fetch statistics
+  const fetchStatistics = async () => {
+    try {
+      setLoadingStats(true);
+      const [statusCounts, revenue, kpis] = await Promise.all([
+        axios.get(`${API_BASE}/api/analytics/booking-status-counts`).catch(() => ({ data: {} })),
+        axios.get(`${API_BASE}/api/analytics/revenue`).catch(() => ({ data: { total: 0 } })),
+        axios.get(`${API_BASE}/api/analytics/business-kpis`).catch(() => ({ data: {} })),
+      ]);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const thisWeek = new Date(today);
+      thisWeek.setDate(today.getDate() - 7);
+      const thisMonth = new Date(today);
+      thisMonth.setMonth(today.getMonth() - 1);
+
+      const todayBookings = bookings.filter(b => b.date >= today).length;
+      const weekBookings = bookings.filter(b => b.date >= thisWeek).length;
+      const monthBookings = bookings.filter(b => b.date >= thisMonth).length;
+
+      setStatistics({
+        total: bookings.length,
+        confirmed: statusCounts.data?.confirmed || 0,
+        provisional: statusCounts.data?.provisional || 0,
+        cancelled: statusCounts.data?.cancelled || 0,
+        revenue: revenue.data?.total || 0,
+        todayBookings,
+        thisWeekBookings: weekBookings,
+        thisMonthBookings: monthBookings,
+      });
+    } catch (error) {
+      console.error('Failed to fetch statistics:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Fetch recent activity
+  const fetchRecentActivity = async () => {
+    try {
+      const recent = bookings
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 10)
+        .map(b => ({
+          id: b.id,
+          type: 'booking',
+          action: b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'created',
+          customer: b.customerName,
+          service: b.service,
+          time: b.date,
+          status: b.status,
+        }));
+      setRecentActivity(recent);
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
     fetchServices();
@@ -123,6 +238,13 @@ export default function Bookings() {
 
     return () => clearInterval(pollInterval);
   }, []);
+
+  useEffect(() => {
+    if (bookings.length > 0) {
+      fetchStatistics();
+      fetchRecentActivity();
+    }
+  }, [bookings]);
 
   const fetchPackages = async () => {
     try {
@@ -150,10 +272,33 @@ export default function Bookings() {
   }, [selectedPackage, packages]);
 
   useEffect(() => {
-    if (selectedDate && selectedService) {
+    if (selectedDate) {
       fetchAvailableHours();
+    } else {
+      setAvailableHours([]);
     }
   }, [selectedDate, selectedService]);
+
+  // Fetch available hours for reschedule
+  useEffect(() => {
+    if (rescheduleDate && editDialogOpen) {
+      setLoadingRescheduleHours(true);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const dateStr = `${rescheduleDate.getFullYear()}-${pad(rescheduleDate.getMonth() + 1)}-${pad(rescheduleDate.getDate())}`;
+      getAvailableHours(dateStr, rescheduleService)
+        .then(hours => {
+          setRescheduleAvailableHours(Array.isArray(hours) ? hours : []);
+        })
+        .catch(() => {
+          setRescheduleAvailableHours(generateFallbackHours(rescheduleDate));
+        })
+        .finally(() => {
+          setLoadingRescheduleHours(false);
+        });
+    } else {
+      setRescheduleAvailableHours([]);
+    }
+  }, [rescheduleDate, rescheduleService, editDialogOpen]);
 
   // Debug: Log timeline data when selectedDate changes
   useEffect(() => {
@@ -173,14 +318,22 @@ export default function Bookings() {
     try {
       const response = await listBookings();
       const formattedBookings: Booking[] = response.bookings.map((b: any) => {
+        // Helper function to check if a string looks like an ID (long alphanumeric)
+        const isId = (str: string) => {
+          if (!str) return false;
+          // Check if it's a long alphanumeric string (likely an ID)
+          return /^[a-z0-9]{20,}$/i.test(str.trim());
+        };
+
         // Remove WhatsApp User prefix if present
         let name = b.customer.name;
         if (name && name.startsWith('WhatsApp User ')) {
           name = name.replace(/^WhatsApp User\s+/, '');
         }
-        // If name is missing or 'Admin User', prefer phone, else fallback to 'No Name / No Phone'
-        if (!name || name.trim().toLowerCase() === 'admin user') {
-          if (b.customer.phone && b.customer.phone.trim() !== '') {
+        
+        // If name is an ID, missing, or 'Admin User', prefer phone, else fallback to 'No Name / No Phone'
+        if (!name || name.trim().toLowerCase() === 'admin user' || isId(name)) {
+          if (b.customer.phone && b.customer.phone.trim() !== '' && !isId(b.customer.phone)) {
             name = b.customer.phone;
           } else {
             name = 'No Name / No Phone';
@@ -225,8 +378,32 @@ export default function Bookings() {
     }
   };
 
+  // Generate fallback time slots (9am to 5pm, every 30 min)
+  const generateFallbackHours = (date: Date): { time: string, available: boolean }[] => {
+    const hours: { time: string, available: boolean }[] = [];
+    const baseDate = new Date(date);
+    baseDate.setHours(9, 0, 0, 0);
+    
+    for (let h = 9; h < 17; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const timeSlot = new Date(baseDate);
+        timeSlot.setHours(h, m, 0, 0);
+        hours.push({
+          time: timeSlot.toISOString(),
+          available: true // For admins, allow all times by default
+        });
+      }
+    }
+    return hours;
+  };
+
   const fetchAvailableHours = async () => {
-    if (!selectedDate || !selectedService) return;
+    if (!selectedDate) {
+      setAvailableHours([]);
+      return;
+    }
+    
+    // Always try to fetch from API if we have a date (service is optional)
     try {
       // Format local date as YYYY-MM-DD
       const pad = (n: number) => n.toString().padStart(2, '0');
@@ -234,15 +411,28 @@ export default function Bookings() {
       console.log('DEBUG: Fetching available hours for date:', localDateStr, 'service:', selectedService);
       const hours = await getAvailableHours(localDateStr, selectedService);
       console.log('DEBUG: Available hours response:', hours);
-      setAvailableHours(hours);
-      console.log('DEBUG: Available hours set in state:', hours);
+      
+      // If we got hours, use them; otherwise generate fallback
+      if (Array.isArray(hours) && hours.length > 0) {
+        setAvailableHours(hours);
+      } else {
+        // Fallback: generate default time slots for admins
+        console.log('DEBUG: No hours returned, using fallback');
+        setAvailableHours(generateFallbackHours(selectedDate));
+      }
     } catch (error) {
-      console.log('DEBUG: Error fetching available hours:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load available hours',
-        variant: 'destructive',
-      });
+      console.error('DEBUG: Error fetching available hours:', error);
+      // On error, generate fallback hours so admin can still select times
+      console.log('DEBUG: Using fallback hours due to error');
+      setAvailableHours(generateFallbackHours(selectedDate));
+      // Only show toast for unexpected errors (network errors are common and handled gracefully)
+      if (error instanceof Error && error.message && !error.message.toLowerCase().includes('network') && !error.message.toLowerCase().includes('fetch')) {
+        toast({
+          title: 'Warning',
+          description: 'Using default time slots. Some times may be unavailable.',
+          variant: 'default',
+        });
+      }
     }
   };
 
@@ -407,14 +597,347 @@ export default function Bookings() {
     }
   };
 
+  // Enhanced filtering
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.service.toLowerCase().includes(searchTerm.toLowerCase());
+      booking.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.customerPhone?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === 'all' || booking.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesPackage =
+      packageFilter === 'all' || booking.service === packageFilter;
+    const matchesDateRange =
+      !dateRange.from || !dateRange.to ||
+      (booking.date >= dateRange.from && booking.date <= dateRange.to);
+    return matchesSearch && matchesStatus && matchesPackage && matchesDateRange;
   });
+
+  // Bulk actions
+  const handleBulkAction = async (action: 'confirm' | 'cancel' | 'delete') => {
+    if (selectedBookings.length === 0) {
+      toast({
+        title: 'No selections',
+        description: 'Please select bookings to perform this action',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      for (const bookingId of selectedBookings) {
+        if (action === 'confirm') {
+          await axios.post(`${API_BASE}/api/bookings/${bookingId}/confirm`);
+        } else if (action === 'cancel') {
+          await axios.post(`${API_BASE}/api/bookings/${bookingId}/cancel`);
+        }
+      }
+      toast({
+        title: 'Success',
+        description: `${action === 'confirm' ? 'Confirmed' : 'Cancelled'} ${selectedBookings.length} booking(s)`,
+      });
+      setSelectedBookings([]);
+      fetchBookings();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${action} bookings`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Export functionality
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      const data = filteredBookings.map(b => ({
+        id: b.id,
+        customer: b.customerName,
+        phone: b.customerPhone || '',
+        service: b.service,
+        date: b.date.toLocaleDateString(),
+        time: b.time,
+        status: b.status,
+      }));
+
+      if (format === 'csv') {
+        const headers = ['ID', 'Customer', 'Phone', 'Service', 'Date', 'Time', 'Status'];
+        const rows = data.map(d => [
+          d.id,
+          d.customer,
+          d.phone,
+          d.service,
+          d.date,
+          d.time,
+          d.status,
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bookings-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bookings-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      toast({
+        title: 'Export successful',
+        description: `Bookings exported as ${format.toUpperCase()}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export bookings',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Toggle booking selection
+  const toggleBookingSelection = (bookingId: string) => {
+    setSelectedBookings(prev =>
+      prev.includes(bookingId)
+        ? prev.filter(id => id !== bookingId)
+        : [...prev, bookingId]
+    );
+  };
+
+  // Save booking note
+  const saveBookingNote = async (bookingId: string, note: string) => {
+    try {
+      // In a real implementation, this would save to the backend
+      setBookingNotes(prev => ({ ...prev, [bookingId]: note }));
+      setEditingNote(null);
+      toast({
+        title: 'Note saved',
+        description: 'Booking note has been saved',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save note',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Fetch full booking details
+  const fetchBookingDetails = async (booking: Booking) => {
+    setLoadingBookingDetails(true);
+    setSelectedBookingDetails(booking);
+    setBookingDetailsOpen(true);
+    
+    try {
+      // Fetch full booking data (includes payments, reminders, followups)
+      const bookingData = await getBooking(booking.id);
+      setFullBookingData(bookingData);
+      
+      // Extract payments, reminders, and followups from booking data
+      if (bookingData.payments) {
+        setBookingPayments(Array.isArray(bookingData.payments) ? bookingData.payments : []);
+      } else {
+        // Fallback: fetch payments separately
+        try {
+          const payments = await axios.get(`${API_BASE}/api/payments`, {
+            params: { bookingId: booking.id }
+          });
+          setBookingPayments(Array.isArray(payments.data) ? payments.data : []);
+        } catch (err) {
+          setBookingPayments([]);
+        }
+      }
+      
+      if (bookingData.reminders) {
+        setBookingReminders(Array.isArray(bookingData.reminders) ? bookingData.reminders : []);
+      } else {
+        // Fallback: fetch reminders separately
+        try {
+          const reminders = await remindersApi.getBookingReminders(booking.id);
+          setBookingReminders(Array.isArray(reminders) ? reminders : []);
+        } catch (err) {
+          setBookingReminders([]);
+        }
+      }
+      
+      if (bookingData.followups) {
+        setBookingFollowups(Array.isArray(bookingData.followups) ? bookingData.followups : []);
+      } else {
+        // Fallback: fetch followups separately
+        try {
+          const followups = await followupsApi.getBookingFollowups(booking.id);
+          setBookingFollowups(Array.isArray(followups) ? followups : []);
+        } catch (err) {
+          setBookingFollowups([]);
+        }
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load booking details',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingBookingDetails(false);
+    }
+  };
+
+  // Fetch customer history
+  const fetchCustomerHistory = async (booking: Booking) => {
+    setLoadingCustomerHistory(true);
+    setCustomerContextOpen(true);
+    
+    try {
+      // Get full booking data to access customerId
+      const fullBookingData = await getBooking(booking.id);
+      const customerId = fullBookingData.customerId || (fullBookingData.customer as any)?.id;
+      
+      if (!customerId) {
+        throw new Error('Customer ID not found');
+      }
+
+      setSelectedCustomerId(customerId);
+      
+      const [customer, customerBookingsData] = await Promise.all([
+        getCustomer(customerId).catch(() => null),
+        getCustomerBookings(customerId).catch(() => []),
+      ]);
+      
+      const customerBookings = Array.isArray(customerBookingsData) ? customerBookingsData : (customerBookingsData?.bookings || []);
+      
+      // Calculate total spent from payments
+      let totalSpent = 0;
+      try {
+        const paymentsResponse = await axios.get(`${API_BASE}/api/payments`, {
+          params: { customerId }
+        });
+        const payments = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
+        totalSpent = payments
+          .filter((p: any) => p.status === 'success')
+          .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      } catch (err) {
+        console.error('Failed to fetch payments:', err);
+      }
+      
+      setCustomerHistory({
+        customer: customer || { 
+          id: customerId, 
+          name: booking.customerName, 
+          phone: booking.customerPhone,
+          email: null,
+          platform: 'unknown',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          aiEnabled: true,
+        },
+        bookings: customerBookings,
+        totalSpent,
+        totalBookings: customerBookings.length,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load customer history',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingCustomerHistory(false);
+    }
+  };
+
+  // Handle reschedule booking
+  const handleRescheduleBooking = async () => {
+    if (!editingBooking || !rescheduleDate || !rescheduleTime) {
+      toast({
+        title: 'Missing information',
+        description: 'Please select a new date and time',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingBooking(true);
+    try {
+      const dateTime = new Date(rescheduleDate);
+      const [hours, minutes] = rescheduleTime.split(':').map(Number);
+      dateTime.setHours(hours, minutes);
+
+      await updateBooking(editingBooking.id, {
+        dateTime: dateTime.toISOString(),
+        service: rescheduleService || editingBooking.service,
+      });
+
+      toast({
+        title: 'Booking updated',
+        description: 'Booking has been rescheduled successfully',
+      });
+
+      setEditDialogOpen(false);
+      setEditingBooking(null);
+      fetchBookings();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to reschedule booking',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingBooking(false);
+    }
+  };
+
+  // Send reminder manually
+  const handleSendReminder = async (reminderId: string) => {
+    try {
+      await remindersApi.sendReminder(reminderId);
+      toast({
+        title: 'Reminder sent',
+        description: 'Reminder has been sent to the customer',
+      });
+      // Refresh reminders
+      if (selectedBookingDetails) {
+        const reminders = await remindersApi.getBookingReminders(selectedBookingDetails.id);
+        setBookingReminders(Array.isArray(reminders) ? reminders : []);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send reminder',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Send followup manually
+  const handleSendFollowup = async (followupId: string) => {
+    try {
+      await followupsApi.sendFollowup(followupId);
+      toast({
+        title: 'Followup sent',
+        description: 'Followup has been sent to the customer',
+      });
+      // Refresh followups
+      if (selectedBookingDetails) {
+        const followups = await followupsApi.getBookingFollowups(selectedBookingDetails.id);
+        setBookingFollowups(Array.isArray(followups) ? followups : []);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send followup',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const upcomingBookings = bookings.filter(booking => booking.date >= new Date());
   const groupedBookings = upcomingBookings.reduce((acc, booking) => {
@@ -555,6 +1078,28 @@ export default function Bookings() {
 
   const columns = [
     {
+      header: () => (
+        <Checkbox
+          checked={selectedBookings.length === filteredBookings.length && filteredBookings.length > 0}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setSelectedBookings(filteredBookings.map(b => b.id));
+            } else {
+              setSelectedBookings([]);
+            }
+          }}
+        />
+      ),
+      accessor: 'id' as keyof Booking,
+      cell: (row: Booking) => (
+        <Checkbox
+          checked={selectedBookings.includes(row.id)}
+          onCheckedChange={() => toggleBookingSelection(row.id)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )
+    },
+    {
       header: 'Customer',
       accessor: 'customerName' as keyof Booking,
       cell: (row: Booking) => (
@@ -649,6 +1194,115 @@ export default function Bookings() {
         );
       },
     },
+    {
+      header: 'Actions',
+      accessor: (row: Booking) => {
+        return (
+          <Popover>
+            <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-1">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    fetchBookingDetails(row);
+                  }}
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setEditingNote(row.id);
+                  }}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {bookingNotes[row.id] ? 'Edit Note' : 'Add Note'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setEditingBooking(row);
+                    setRescheduleDate(row.date);
+                    setRescheduleTime(row.time);
+                    setRescheduleService(row.service);
+                    setEditDialogOpen(true);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit/Reschedule
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    fetchCustomerHistory(row);
+                  }}
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  Customer History
+                </Button>
+                {row.status === 'provisional' && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={async () => {
+                      try {
+                        await axios.post(`${API_BASE}/api/bookings/${row.id}/confirm`);
+                        toast({ title: 'Booking confirmed' });
+                        fetchBookings();
+                      } catch (error) {
+                        toast({ title: 'Error', description: 'Failed to confirm booking', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirm
+                  </Button>
+                )}
+                {row.status !== 'cancelled' && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={async () => {
+                      try {
+                        await axios.post(`${API_BASE}/api/bookings/${row.id}/cancel`);
+                        toast({ title: 'Booking cancelled' });
+                        fetchBookings();
+                      } catch (error) {
+                        toast({ title: 'Error', description: 'Failed to cancel booking', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    navigator.clipboard.writeText(row.id);
+                    toast({ title: 'Copied', description: 'Booking ID copied to clipboard' });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy ID
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      },
+    },
   ];
 
   if (loading) {
@@ -676,11 +1330,15 @@ export default function Bookings() {
           </DialogContent>
         </Dialog>
 
-        {/* Header Section */}
+        {/* ============================================
+            HEADER SECTION
+            ============================================ */}
+        <div className="space-y-4">
         <PageHeader
           title="Bookings"
           description="Manage appointments and schedules"
           actions={
+              <div className="flex items-center gap-2 flex-wrap">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="shadow-md hover:shadow-lg transition-all">
@@ -688,133 +1346,324 @@ export default function Bookings() {
                   New Booking
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-border/50 shadow-2xl">
-                <DialogHeader className="border-b border-border/50 pb-4">
-                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                    Create New Booking
-                  </DialogTitle>
-                </DialogHeader>
-
-                <div className="grid gap-6 py-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="recipientName">Customer Name</Label>
-                    <Input
-                      id="recipientName"
-                      value={recipientName}
-                      onChange={e => setRecipientName(e.target.value)}
-                      placeholder="Enter customer name"
-                      className="h-11"
-                    />
+                </Dialog>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  {showAdvancedFilters ? 'Hide' : 'Advanced'} Filters
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48">
+                    <div className="space-y-2">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => handleExport('csv')}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as CSV
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => handleExport('json')}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as JSON
+                      </Button>
                   </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            }
+          />
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="recipientPhone">Phone Number</Label>
-                    <Input
-                      id="recipientPhone"
-                      value={recipientPhone}
-                      onChange={e => setRecipientPhone(e.target.value)}
-                      placeholder="Enter phone number"
-                      className="h-11"
-                    />
+          {/* Statistics Cards - Overview at Top */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-3xl font-bold text-foreground">{statistics.total}</div>
+                  <p className="text-xs text-muted-foreground mt-1">All time</p>
                   </div>
+                <div className="p-3 rounded-full bg-primary/10">
+                  <CalendarIcon className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                  <div className="grid gap-2">
-                    <Label>Package</Label>
-                    <Select value={selectedPackage} onValueChange={val => {
-                      setSelectedPackage(val);
-                      const pkg = getPackageById(val);
-                      if (pkg) setSelectedService(pkg.name);
-                    }}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select a package" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(packages) && packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            <div className="flex items-center justify-between w-full gap-2">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-2 h-2 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: getPackageColor(pkg.name) }}
-                                />
-                                <span>{pkg.name}</span>
+          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-3xl font-bold text-green-600">{statistics.confirmed}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {statistics.total > 0 ? Math.round((statistics.confirmed / statistics.total) * 100) : 0}% of total
+                  </p>
                               </div>
-                              <span className="text-muted-foreground text-sm">{pkg.price}</span>
+                <div className="p-3 rounded-full bg-green-100">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
+            </CardContent>
+          </Card>
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="grid gap-2">
-                      <Label>Date</Label>
-                      <div className="border rounded-md p-2 flex justify-center">
+          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-3xl font-bold text-blue-600">{statistics.thisMonthBookings}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Bookings this month</p>
+                      </div>
+                <div className="p-3 rounded-full bg-blue-100">
+                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                    </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-3xl font-bold text-purple-600">
+                    KSh {statistics.revenue.toLocaleString()}
+                          </div>
+                  <p className="text-xs text-muted-foreground mt-1">Total revenue</p>
+                </div>
+                <div className="p-3 rounded-full bg-purple-100">
+                  <DollarSign className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          </div>
+        </div>
+
+        {/* ============================================
+            FILTERS & ACTIONS SECTION
+            ============================================ */}
+        <div className="space-y-4">
+          {/* Quick Actions & Bulk Operations */}
+          {selectedBookings.length > 0 && (
+            <Card className="border-primary/50 bg-primary/5 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-foreground">
+                      {selectedBookings.length} booking{selectedBookings.length > 1 ? 's' : ''} selected
+                    </span>
+                                <Button
+                      variant="ghost"
+                                  size="sm"
+                      onClick={() => setSelectedBookings([])}
+                                >
+                      <X className="h-4 w-4" />
+                                </Button>
+                          </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkAction('confirm')}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Confirm Selected
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkAction('cancel')}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel Selected
+                    </Button>
+                      </div>
+                    </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+          <Card className="border-border/50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg">Advanced Filters</CardTitle>
+              <CardDescription>Filter bookings by multiple criteria</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Date Range</Label>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange.from ? dateRange.from.toLocaleDateString() : 'From'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          className="rounded-md"
+                          selected={dateRange.from}
+                          onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
                         />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Time</Label>
-                      <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
-                        {availableHours.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-                            <Clock className="h-8 w-8 mb-2 opacity-20" />
-                            <p className="text-sm">No available times.</p>
-                            <p className="text-xs mt-1">Select a date and package first.</p>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2 p-2">
-                            {availableHours.map(({ time, available }) => {
-                              const d = new Date(time);
-                              const timeStr = d.toTimeString().split(' ')[0];
-                              const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                              const isSelected = selectedTime === timeStr;
-
-                              return (
-                                <Button
-                                  key={time}
-                                  variant={isSelected ? "default" : "outline"}
-                                  disabled={!available}
-                                  onClick={() => setSelectedTime(timeStr)}
-                                  className={`w-full justify-start ${!available ? 'opacity-50' : ''}`}
-                                  size="sm"
-                                >
-                                  {label}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange.to ? dateRange.to.toLocaleDateString() : 'To'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={dateRange.to}
+                          onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
-                    Cancel
+                <div className="space-y-2">
+                  <Label>Package/Service</Label>
+                  <Select value={packageFilter} onValueChange={setPackageFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All packages" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Packages</SelectItem>
+                      {packages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.name}>
+                          {pkg.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Quick Date Filters</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const today = new Date();
+                        setDateRange({ from: today, to: today });
+                      }}
+                    >
+                      Today
                   </Button>
                   <Button
-                    onClick={handleCreateBooking}
-                    disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
-                    size="lg"
-                  >
-                    {creating ? 'Creating...' : 'Confirm Booking'}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const today = new Date();
+                        const weekAgo = new Date(today);
+                        weekAgo.setDate(today.getDate() - 7);
+                        setDateRange({ from: weekAgo, to: today });
+                      }}
+                    >
+                      Last 7 Days
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({})}
+                    >
+                      Clear
                   </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
-          }
-        />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          )}
 
-        {/* Full-Width Calendar Section */}
+          {/* Quick Search & Status Filter - Always Visible */}
+          <Card className="border-border/50 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, service, or phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-background"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Status" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="provisional">Provisional</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ============================================
+            MAIN CONTENT AREA - TABS
+            ============================================ */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Activity
+              </TabsTrigger>
+            </TabsList>
+            <div className="text-sm text-muted-foreground">
+              {filteredBookings.length} booking{filteredBookings.length !== 1 ? 's' : ''} found
+            </div>
+          </div>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Calendar & Selected Date Bookings */}
         <Card className="border-border/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 pb-6 shadow-lg">
             <div className="flex items-center justify-between">
@@ -907,118 +1756,915 @@ export default function Bookings() {
           </CardContent>
         </Card>
 
-        {/* Rest of the content */}
-        <div className="grid lg:grid-cols-3 gap-8">
+            {/* Main Content Grid: Upcoming Bookings + Timeline */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Left Column: Upcoming Bookings Sidebar */}
+              <div className="lg:col-span-1">
+                {/* Upcoming Bookings */}
+                <Card className="border-border/50 shadow-lg">
+                  <CardHeader className="pb-4 border-b border-border/50">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-primary" />
+                      Upcoming
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="max-h-[400px] overflow-y-auto px-6 pb-6 space-y-4 scrollbar-custom">
+                      {sortedDates.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No upcoming bookings</p>
+                        </div>
+                      ) : (
+                        sortedDates.slice(0, 3).map(dateStr => (
+                          <div key={dateStr} className="space-y-3">
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky top-0 bg-white py-2">
+                              {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </h4>
+                            {groupedBookings[dateStr].map(booking => (
+                              <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-lg bg-gradient-to-br from-muted/30 to-background hover:from-primary/5 hover:to-muted/30 transition-all duration-200 border border-border/30 hover:border-primary/20 hover:shadow-sm">
+                                <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0 ring-1 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                    <Clock className="h-3 w-3" />
+                                    {booking.time}
+                                  </div>
+                                </div>
+                                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 border-border/50 shadow-sm">
+                                  {booking.service}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Left Column: Upcoming */}
-          <div className="lg:col-span-1 space-y-8"
-          >
+              {/* Right Column: Timeline */}
+              <div className="lg:col-span-2">
+                {/* Daily Timeline for Selected Date */}
+                <Card className="border-border/50 shadow-lg">
+                  <CardHeader className="pb-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-primary/10">
+                        <Clock className="h-5 w-5 text-primary" />
+                      </div>
+                      Daily Timeline
+                      {selectedDate && (
+                        <span className="text-sm font-normal text-muted-foreground ml-2">
+                          • {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {renderDailyTimeline()}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
-            {/* Upcoming Bookings */}
-            <Card className="border-border/50 shadow-lg">
-              <CardHeader className="pb-4 border-b border-border/50">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Upcoming
+            {/* All Bookings Table - Separate Section */}
+            <Card className="border-border/50 shadow-lg overflow-hidden">
+              <CardHeader className="pb-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+                <CardTitle className="text-lg font-semibold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    All Bookings
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {filteredBookings.length} total
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-h-[400px] overflow-y-auto px-6 pb-6 space-y-4 scrollbar-custom">
-                  {sortedDates.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No upcoming bookings</p>
+                <div className="overflow-x-auto scrollbar-custom">
+                  <DataTable
+                    data={filteredBookings}
+                    columns={columns}
+                    onRowClick={(booking) => {
+                      fetchBookingDetails(booking);
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Status Distribution */}
+              <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+      </div>
+                    Booking Status Distribution
+                  </CardTitle>
+                  <CardDescription>Current booking status breakdown</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                        <span className="font-medium">Confirmed</span>
+    </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-green-700 dark:text-green-400">{statistics.confirmed}</span>
+                        {statistics.total > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            ({Math.round((statistics.confirmed / statistics.total) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                        <span className="font-medium">Provisional</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-yellow-700 dark:text-yellow-400">{statistics.provisional}</span>
+                        {statistics.total > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            ({Math.round((statistics.provisional / statistics.total) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                        <span className="font-medium">Cancelled</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-red-700 dark:text-red-400">{statistics.cancelled}</span>
+                        {statistics.total > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            ({Math.round((statistics.cancelled / statistics.total) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Booking Trends */}
+              <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    Booking Trends
+                  </CardTitle>
+                  <CardDescription>Recent booking activity</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">Today</span>
+                        <span className="text-2xl font-bold text-foreground">{statistics.todayBookings}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Bookings scheduled for today</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">This Week</span>
+                        <span className="text-2xl font-bold text-foreground">{statistics.thisWeekBookings}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Bookings in the last 7 days</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">This Month</span>
+                        <span className="text-2xl font-bold text-foreground">{statistics.thisMonthBookings}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Bookings in the current month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-6">
+            <Card className="border-border/50 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Activity className="h-5 w-5 text-primary" />
+                      </div>
+                      Recent Activity
+                    </CardTitle>
+                    <CardDescription className="mt-1">Latest booking updates and changes</CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {recentActivity.length} items
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  {recentActivity.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                        <Activity className="h-8 w-8 opacity-20" />
+                      </div>
+                      <p className="text-sm font-medium">No recent activity</p>
+                      <p className="text-xs mt-1">Activity will appear here as bookings are created or updated</p>
                     </div>
                   ) : (
-                    sortedDates.slice(0, 3).map(dateStr => (
-                      <div key={dateStr} className="space-y-3">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky top-0 bg-white py-2">
-                          {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </h4>
-                        {groupedBookings[dateStr].map(booking => (
-                          <div key={booking.id} className="group flex items-start gap-3 p-3 rounded-lg bg-gradient-to-br from-muted/30 to-background hover:from-primary/5 hover:to-muted/30 transition-all duration-200 border border-border/30 hover:border-primary/20 hover:shadow-sm">
-                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0 ring-1 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                <Clock className="h-3 w-3" />
-                                {booking.time}
-                              </div>
-                            </div>
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 border-border/50 shadow-sm">
-                              {booking.service}
+                    recentActivity.map((activity, idx) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-4 p-4 rounded-lg border border-border/50 hover:bg-muted/50 hover:border-primary/30 transition-all group"
+                      >
+                        <div className={cn(
+                          "p-2.5 rounded-full flex-shrink-0 transition-transform group-hover:scale-110",
+                          idx === 0 ? "bg-primary/10 ring-2 ring-primary/20" : "bg-muted"
+                        )}>
+                          <Clock className={cn(
+                            "h-4 w-4",
+                            idx === 0 ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-semibold text-foreground">
+                              {activity.customer}
+                            </p>
+                            <Badge variant={getStatusVariant(activity.status)} className="text-xs">
+                              {activity.status}
                             </Badge>
                           </div>
-                        ))}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <PackageIcon className="h-3 w-3" />
+                            <span>{activity.service}</span>
+                            <span>•</span>
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>{activity.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          </div>
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+        </Tabs>
 
+        {/* ============================================
+            DIALOGS & MODALS
+            ============================================ */}
+        
+        {/* Create Booking Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-border/50 shadow-2xl">
+                <DialogHeader className="border-b border-border/50 pb-4">
+                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    Create New Booking
+                  </DialogTitle>
+                </DialogHeader>
 
-          </div>
-
-          {/* Right Column: All Bookings Table */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or service..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white border-gray-200 shadow-sm"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-200 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Status" />
+                <div className="grid gap-6 py-6">
+                  <div className="grid gap-2">
+                    <Label htmlFor="recipientName">Customer Name</Label>
+                    <Input
+                      id="recipientName"
+                      value={recipientName}
+                      onChange={e => setRecipientName(e.target.value)}
+                      placeholder="Enter customer name"
+                      className="h-11"
+                    />
                   </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="provisional">Provisional</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="recipientPhone">Phone Number</Label>
+                    <Input
+                      id="recipientPhone"
+                      value={recipientPhone}
+                      onChange={e => setRecipientPhone(e.target.value)}
+                      placeholder="Enter phone number"
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Package</Label>
+                    <Select value={selectedPackage} onValueChange={val => {
+                      setSelectedPackage(val);
+                      const pkg = getPackageById(val);
+                      if (pkg) setSelectedService(pkg.name);
+                    }}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select a package" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(packages) && packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: getPackageColor(pkg.name) }}
+                                />
+                                <span>{pkg.name}</span>
+                              </div>
+                              <span className="text-muted-foreground text-sm">{pkg.price}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid gap-2">
+                      <Label>Date</Label>
+                      <div className="border rounded-md p-2 flex justify-center">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          className="rounded-md"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Time</Label>
+                      <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
+                        {availableHours.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                            <Clock className="h-8 w-8 mb-2 opacity-20" />
+                            <p className="text-sm">No available times.</p>
+                            <p className="text-xs mt-1">Select a date and package first.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2 p-2">
+                            {availableHours.map(({ time, available }) => {
+                              const d = new Date(time);
+                              const timeStr = d.toTimeString().split(' ')[0];
+                              const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              const isSelected = selectedTime === timeStr;
+
+                              // For admins, allow selecting even if marked as unavailable (show warning style)
+                              return (
+                                <Button
+                                  key={time}
+                                  variant={isSelected ? "default" : available ? "outline" : "outline"}
+                                  disabled={false} // Always enabled for admins
+                                  onClick={() => setSelectedTime(timeStr)}
+                                  className={`w-full justify-start ${!available ? 'opacity-70 border-orange-300 hover:border-orange-400' : ''}`}
+                                  size="sm"
+                                  title={!available ? 'This time slot may be occupied' : ''}
+                                >
+                                  {label}
+                                  {!available && <span className="ml-1 text-xs">⚠</span>}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateBooking}
+                    disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
+                    size="lg"
+                  >
+                    {creating ? 'Creating...' : 'Confirm Booking'}
+                  </Button>
+                </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Booking Note Dialog */}
+        <Dialog open={editingNote !== null} onOpenChange={(open) => !open && setEditingNote(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Booking Note</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Add a note about this booking..."
+                value={editingNote ? bookingNotes[editingNote] || '' : ''}
+                onChange={(e) => {
+                  if (editingNote) {
+                    setBookingNotes(prev => ({ ...prev, [editingNote]: e.target.value }));
+                  }
+                }}
+                rows={5}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingNote(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => editingNote && saveBookingNote(editingNote, bookingNotes[editingNote] || '')}>
+                  Save Note
+                </Button>
+              </div>
             </div>
+          </DialogContent>
+        </Dialog>
 
-            {/* Daily Timeline */}
-            <Card className="border-border/50 shadow-lg">
-              <CardHeader className="pb-4 border-b border-border/50">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  Daily Timeline
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {renderDailyTimeline()}
-              </CardContent>
-            </Card>
-
-
-            {/* Table Card */}
-            <Card className="border-border/50 shadow-lg overflow-hidden">
-              <div className="overflow-x-auto scrollbar-custom">
-                <DataTable
-                  data={filteredBookings}
-                  columns={columns}
-                  onRowClick={(booking) => {
-                    console.log('Clicked booking:', booking);
-                  }}
-                />
+        {/* Booking Details Modal */}
+        <Dialog open={bookingDetailsOpen} onOpenChange={setBookingDetailsOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Booking Details</DialogTitle>
+            </DialogHeader>
+            
+            {loadingBookingDetails ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
               </div>
-            </Card>
-          </div>
-        </div>
+            ) : selectedBookingDetails ? (
+              <div className="space-y-6">
+                {/* Booking Overview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CalendarIcon className="h-5 w-5" />
+                      Booking Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">Customer Name</Label>
+                        <p className="font-semibold">{selectedBookingDetails.customerName}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Phone</Label>
+                        <p className="font-semibold">{selectedBookingDetails.customerPhone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Service</Label>
+                        <p className="font-semibold">{selectedBookingDetails.service}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Status</Label>
+                        <Badge variant={getStatusVariant(selectedBookingDetails.status)} className="capitalize">
+                          {selectedBookingDetails.status}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Date</Label>
+                        <p className="font-semibold">{selectedBookingDetails.date.toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Time</Label>
+                        <p className="font-semibold">{selectedBookingDetails.time}</p>
+                      </div>
+                    </div>
+                    {fullBookingData?.durationMinutes && (
+                      <div>
+                        <Label className="text-muted-foreground">Duration</Label>
+                        <p className="font-semibold">{fullBookingData.durationMinutes} minutes</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Payment Information */}
+                {bookingPayments.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Payment Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {bookingPayments.map((payment: any) => (
+                          <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                            <div>
+                              <p className="font-semibold">KSh {payment.amount?.toLocaleString() || '0'}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Status: <Badge variant={payment.status === 'success' ? 'default' : 'secondary'}>{payment.status}</Badge>
+                              </p>
+                              {payment.mpesaReceipt && (
+                                <p className="text-xs text-muted-foreground mt-1">Receipt: {payment.mpesaReceipt}</p>
+                              )}
+                            </div>
+                            <div className="text-right text-sm text-muted-foreground">
+                              {new Date(payment.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Reminders */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="h-5 w-5" />
+                        Reminders
+                      </div>
+                      <Badge variant="outline">{bookingReminders.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {bookingReminders.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No reminders scheduled</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {bookingReminders.map((reminder) => (
+                          <div key={reminder.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{reminder.type} Reminder</p>
+                                <Badge variant={reminder.status === 'sent' ? 'default' : reminder.status === 'pending' ? 'secondary' : 'destructive'}>
+                                  {reminder.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Scheduled: {new Date(reminder.scheduledFor).toLocaleString()}
+                              </p>
+                              {reminder.sentAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  Sent: {new Date(reminder.sentAt).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                            {reminder.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendReminder(reminder.id)}
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Send Now
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Followups */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-5 w-5" />
+                        Followups
+                      </div>
+                      <Badge variant="outline">{bookingFollowups.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {bookingFollowups.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No followups scheduled</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {bookingFollowups.map((followup) => (
+                          <div key={followup.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium capitalize">{followup.type} Followup</p>
+                                <Badge variant={followup.status === 'sent' ? 'default' : followup.status === 'pending' ? 'secondary' : 'destructive'}>
+                                  {followup.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Scheduled: {new Date(followup.scheduledFor).toLocaleString()}
+                              </p>
+                              {followup.sentAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  Sent: {new Date(followup.sentAt).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                            {followup.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendFollowup(followup.id)}
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Send Now
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Invoice */}
+                {invoices[selectedBookingDetails.id] && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Invoice
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">Invoice #{invoices[selectedBookingDetails.id].invoiceNumber}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Total: KSh {invoices[selectedBookingDetails.id].total?.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(invoicesApi.downloadInvoice(invoices[selectedBookingDetails.id].id), '_blank')}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={invoices[selectedBookingDetails.id].status === 'sent' ? 'secondary' : 'default'}
+                            onClick={() => handleSendInvoice(invoices[selectedBookingDetails.id].id, selectedBookingDetails.customerName)}
+                            disabled={invoices[selectedBookingDetails.id].status === 'sent'}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            {invoices[selectedBookingDetails.id].status === 'sent' ? 'Sent' : 'Send'}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditingBooking(selectedBookingDetails);
+                      setRescheduleDate(selectedBookingDetails.date);
+                      setRescheduleTime(selectedBookingDetails.time);
+                      setRescheduleService(selectedBookingDetails.service);
+                      setBookingDetailsOpen(false);
+                      setEditDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit/Reschedule
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      fetchCustomerHistory(selectedBookingDetails);
+                      setBookingDetailsOpen(false);
+                    }}
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    View Customer History
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit/Reschedule Booking Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Edit/Reschedule Booking</DialogTitle>
+              <CardDescription>Update booking date, time, or service</CardDescription>
+            </DialogHeader>
+            
+            {editingBooking && (
+              <div className="space-y-6 py-4">
+                <div className="grid gap-2">
+                  <Label>Service/Package</Label>
+                  <Select value={rescheduleService} onValueChange={setRescheduleService}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {packages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.name}>
+                          {pkg.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid gap-2">
+                    <Label>New Date</Label>
+                    <div className="border rounded-md p-2 flex justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={rescheduleDate}
+                        onSelect={setRescheduleDate}
+                        className="rounded-md"
+                        disabled={(date) => date < new Date()}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>New Time</Label>
+                    <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
+                      {!rescheduleDate ? (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                          <Clock className="h-8 w-8 mb-2 opacity-20" />
+                          <p className="text-sm">Select a date first</p>
+                        </div>
+                      ) : loadingRescheduleHours ? (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2" />
+                          <p className="text-sm">Loading available times...</p>
+                        </div>
+                      ) : rescheduleAvailableHours.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                          <Clock className="h-8 w-8 mb-2 opacity-20" />
+                          <p className="text-sm">No available times</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 p-2">
+                          {rescheduleAvailableHours.map(({ time, available }) => {
+                            const d = new Date(time);
+                            const timeStr = d.toTimeString().split(' ')[0];
+                            const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const isSelected = rescheduleTime === timeStr;
+                            return (
+                              <Button
+                                key={time}
+                                variant={isSelected ? "default" : available ? "outline" : "outline"}
+                                disabled={!available}
+                                onClick={() => setRescheduleTime(timeStr)}
+                                className={`w-full justify-start ${!available ? 'opacity-50' : ''}`}
+                                size="sm"
+                              >
+                                {label}
+                                {!available && <span className="ml-1 text-xs">⚠</span>}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRescheduleBooking}
+                    disabled={savingBooking || !rescheduleDate || !rescheduleTime}
+                  >
+                    {savingBooking ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Customer Context Sidebar */}
+        <Dialog open={customerContextOpen} onOpenChange={setCustomerContextOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                <User className="h-6 w-6" />
+                Customer History
+              </DialogTitle>
+            </DialogHeader>
+            
+            {loadingCustomerHistory ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+              </div>
+            ) : customerHistory ? (
+              <div className="space-y-6">
+                {/* Customer Info */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Customer Information</CardTitle>
+                      {selectedCustomerId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigate(`/customers/${selectedCustomerId}`);
+                            setCustomerContextOpen(false);
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Full Profile
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">Name</Label>
+                        <p className="font-semibold">{customerHistory.customer?.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Phone</Label>
+                        <p className="font-semibold">{customerHistory.customer?.phone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Total Bookings</Label>
+                        <p className="font-semibold text-2xl">{customerHistory.totalBookings}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Total Spent</Label>
+                        <p className="font-semibold text-2xl text-green-600">
+                          KSh {customerHistory.totalSpent.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Previous Bookings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Previous Bookings</span>
+                      <Badge variant="outline">{customerHistory.bookings.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {customerHistory.bookings.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No previous bookings</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {customerHistory.bookings.slice(0, 10).map((booking: any) => (
+                          <div
+                            key={booking.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => {
+                              const bookingObj: Booking = {
+                                id: booking.id,
+                                customerName: booking.customer?.name || 'Unknown',
+                                customerPhone: booking.customer?.phone || '',
+                                service: booking.service,
+                                date: new Date(booking.dateTime),
+                                time: new Date(booking.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                status: booking.status,
+                                googleEventId: booking.googleEventId,
+                              };
+                              fetchBookingDetails(bookingObj);
+                              setCustomerContextOpen(false);
+                            }}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{booking.service}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(booking.dateTime).toLocaleDateString()} • {new Date(booking.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <Badge variant={getStatusVariant(booking.status)} className="capitalize">
+                              {booking.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   );

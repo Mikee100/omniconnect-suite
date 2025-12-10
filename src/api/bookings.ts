@@ -68,7 +68,7 @@ export const listBookings = async (params?: {
 };
 
 export const getBooking = async (id: string): Promise<Booking> => {
-  const response = await api.get(`/bookings/${id}`);
+  const response = await api.get(`/bookings/by-id/${id}`);
   return response.data;
 };
 

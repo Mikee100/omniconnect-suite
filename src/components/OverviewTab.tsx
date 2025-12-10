@@ -3,13 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   DollarSign, Users, TrendingUp, TrendingDown, Calendar,
-  Percent, Heart, Package, Clock, ArrowUpRight, ArrowDownRight
+  Percent, Heart, Package, Clock, ArrowUpRight, ArrowDownRight,
+  Smile, Bot, Zap, Activity, MessageSquare, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { businessAnalyticsApi } from '@/api/businessAnalytics';
 import {
+  fetchComprehensiveStats,
+  fetchCustomerEmotionsStats,
+  fetchAIPerformanceStats,
+  fetchPersonalizedResponseStats,
+  fetchSystemStats
+} from '@/api/statistics';
+import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 
 const OverviewTab = () => {
@@ -17,6 +25,10 @@ const OverviewTab = () => {
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
   const [revenueByPackage, setRevenueByPackage] = useState<any[]>([]);
   const [seasonalTrends, setSeasonalTrends] = useState<any[]>([]);
+  const [customerEmotions, setCustomerEmotions] = useState<any>(null);
+  const [aiPerformance, setAiPerformance] = useState<any>(null);
+  const [personalizedResponses, setPersonalizedResponses] = useState<any>(null);
+  const [systemStats, setSystemStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,17 +37,34 @@ const OverviewTab = () => {
 
   const loadAnalytics = async () => {
     try {
-      const [kpisData, monthlyData, packageData, trendsData] = await Promise.all([
+      const [
+        kpisData,
+        monthlyData,
+        packageData,
+        trendsData,
+        emotionsData,
+        aiPerfData,
+        personalizedData,
+        systemData
+      ] = await Promise.all([
         businessAnalyticsApi.getBusinessKPIs(),
         businessAnalyticsApi.getMonthlyRevenue(),
         businessAnalyticsApi.getRevenueByPackage(),
         businessAnalyticsApi.getSeasonalTrends(),
+        fetchCustomerEmotionsStats(),
+        fetchAIPerformanceStats(),
+        fetchPersonalizedResponseStats(),
+        fetchSystemStats(),
       ]);
 
       setKpis(kpisData);
       setMonthlyRevenue(monthlyData);
       setRevenueByPackage(packageData);
       setSeasonalTrends(trendsData);
+      setCustomerEmotions(emotionsData);
+      setAiPerformance(aiPerfData);
+      setPersonalizedResponses(personalizedData);
+      setSystemStats(systemData);
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
@@ -367,6 +396,365 @@ const OverviewTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Customer Emotions Section */}
+      {customerEmotions && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Smile className="h-6 w-6 text-pink-500" />
+            <h2 className="text-2xl font-bold">Customer Emotions & Sentiment</h2>
+          </div>
+          
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+            {/* Sentiment Distribution */}
+            <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="text-lg font-semibold">Sentiment Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Very Positive', value: customerEmotions.distribution.very_positive, color: '#10b981' },
+                        { name: 'Positive', value: customerEmotions.distribution.positive, color: '#22c55e' },
+                        { name: 'Neutral', value: customerEmotions.distribution.neutral, color: '#94a3b8' },
+                        { name: 'Negative', value: customerEmotions.distribution.negative, color: '#f59e0b' },
+                        { name: 'Very Negative', value: customerEmotions.distribution.very_negative, color: '#ef4444' },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {['#10b981', '#22c55e', '#94a3b8', '#f59e0b', '#ef4444'].map((color, index) => (
+                        <Cell key={`cell-${index}`} fill={color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Sentiment Trends */}
+            <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="text-lg font-semibold">Sentiment Trends (7 Days)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={customerEmotions.recentTrends}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" />
+                    <YAxis className="text-xs" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Area type="monotone" dataKey="avgScore" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sentiment Stats Cards */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Total Sentiments</p>
+                    <p className="text-2xl font-bold mt-2">{customerEmotions.total || 0}</p>
+                  </div>
+                  <Smile className="h-8 w-8 text-pink-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Avg Score</p>
+                    <p className="text-2xl font-bold mt-2">{(customerEmotions.averageScore || 0).toFixed(2)}</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Positive %</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(customerEmotions.distribution?.percentages?.positive || 0).toFixed(1)}%
+                    </p>
+                  </div>
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Needs Attention</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {customerEmotions.customersNeedingAttention?.length || 0}
+                    </p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-amber-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* AI Performance Section */}
+      {aiPerformance && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Bot className="h-6 w-6 text-purple-500" />
+            <h2 className="text-2xl font-bold">AI Performance Metrics</h2>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Avg Response Time</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(aiPerformance.responseTime?.average / 1000 || 0).toFixed(1)}s
+                    </p>
+                  </div>
+                  <Clock className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Success Rate</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(aiPerformance.accuracy?.successRate || 0).toFixed(1)}%
+                    </p>
+                  </div>
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">User Rating</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(aiPerformance.userSatisfaction?.averageRating || 0).toFixed(1)}/5
+                    </p>
+                  </div>
+                  <Heart className="h-8 w-8 text-pink-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Cache Hit Rate</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(aiPerformance.efficiency?.cacheHitRate || 0).toFixed(1)}%
+                    </p>
+                  </div>
+                  <Zap className="h-8 w-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Performance by Intent */}
+          <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+            <CardHeader className="border-b border-border/50">
+              <CardTitle className="text-lg font-semibold">Performance by Intent</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Intent</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Success Rate</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aiPerformance.byIntent?.slice(0, 10).map((intent: any, index: number) => (
+                      <tr key={index} className="border-b hover:bg-accent/50 transition-colors">
+                        <td className="py-4 px-4 font-medium">{intent.intent}</td>
+                        <td className="text-right py-4 px-4">{intent.total}</td>
+                        <td className="text-right py-4 px-4">
+                          <Badge variant={intent.successRate > 80 ? 'default' : 'secondary'}>
+                            {intent.successRate.toFixed(1)}%
+                          </Badge>
+                        </td>
+                        <td className="text-right py-4 px-4">{intent.averageTimeToResolution}s</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Personalized Responses Section */}
+      {personalizedResponses && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Zap className="h-6 w-6 text-blue-500" />
+            <h2 className="text-2xl font-bold">Personalized Response Performance</h2>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Personalized Conversations</p>
+                    <p className="text-2xl font-bold mt-2">{personalizedResponses.totalPersonalizedConversations || 0}</p>
+                  </div>
+                  <MessageSquare className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Success Rate</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {(personalizedResponses.overallSuccessRate || 0).toFixed(1)}%
+                    </p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Avg Resolution Time</p>
+                    <p className="text-2xl font-bold mt-2">
+                      {Math.round(personalizedResponses.averageTimeToResolution / 60) || 0}m
+                    </p>
+                  </div>
+                  <Clock className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Performance by Communication Style */}
+          <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
+            <CardHeader className="border-b border-border/50">
+              <CardTitle className="text-lg font-semibold">Performance by Communication Style</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={personalizedResponses.byCommunicationStyle}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="style" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="total" fill="#8b5cf6" name="Total" />
+                  <Bar dataKey="successful" fill="#10b981" name="Successful" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* System Stats Section */}
+      {systemStats && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Activity className="h-6 w-6 text-green-500" />
+            <h2 className="text-2xl font-bold">System Overview</h2>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Total Customers</p>
+                    <p className="text-2xl font-bold mt-2">{systemStats.customers?.total || 0}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats.customers?.active || 0} active
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Total Messages</p>
+                    <p className="text-2xl font-bold mt-2">{systemStats.messages?.total || 0}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats.messages?.responseRate?.toFixed(1) || 0}% response rate
+                    </p>
+                  </div>
+                  <MessageSquare className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Total Bookings</p>
+                    <p className="text-2xl font-bold mt-2">{systemStats.bookings?.total || 0}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats.bookings?.completionRate?.toFixed(1) || 0}% completed
+                    </p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Open Escalations</p>
+                    <p className="text-2xl font-bold mt-2">{systemStats.escalations?.open || 0}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats.escalations?.resolutionRate?.toFixed(1) || 0}% resolved
+                    </p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-amber-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
