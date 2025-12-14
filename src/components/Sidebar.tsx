@@ -15,6 +15,7 @@ import {
   Package,
   Users,
   X,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
   { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
   { name: 'AI Test Chat', href: '/ai-test-chat', icon: MessageSquare },
+  { name: 'Health Monitoring', href: '/health', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

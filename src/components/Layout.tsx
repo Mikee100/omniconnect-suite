@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
         !isDesktop && "ml-0"
       )}>
         <Navbar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fadeIn w-full max-w-[1920px] mx-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-5 animate-fadeIn w-full max-w-[1920px] mx-auto">
           {children}
         </main>
       </div>

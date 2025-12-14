@@ -199,25 +199,25 @@ const WhatsAppTab = () => {
   ];
 
   return (
-    <div className="space-y-6 p-1">
-      <div className="flex items-center justify-between mb-2">
+    <div className="space-y-4 p-1">
+      <div className="flex items-center justify-between mb-1">
         <div>
-          <h2 className="text-2xl font-bold text-foreground tracking-tight">WhatsApp Analytics</h2>
-          <p className="text-sm text-muted-foreground">Real-time insights into customer engagement and performance.</p>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">WhatsApp Analytics</h2>
+          <p className="text-xs text-muted-foreground">Real-time insights into customer engagement and performance.</p>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {metricCards.map((card, idx) => (
           <Card key={idx} className="border-none shadow-sm hover:shadow-md transition-shadow bg-card">
-            <CardContent className="p-5 flex items-center justify-between">
+            <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{card.label}</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>
+                <p className="text-xl font-bold text-foreground mt-0.5">{card.value}</p>
               </div>
-              <div className={`p-3 rounded-xl ${card.bg}`}>
-                <card.icon className={`w-5 h-5 ${card.color}`} />
+              <div className={`p-2 rounded-xl ${card.bg}`}>
+                <card.icon className={`w-4 h-4 ${card.color}`} />
               </div>
             </CardContent>
           </Card>
@@ -225,15 +225,15 @@ const WhatsAppTab = () => {
       </div>
 
       {/* Charts Row 1: Peak Times */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" /> Peak Chat Hours
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" /> Peak Chat Hours
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px] w-full">
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stats.peakHours}>
                   <defs>
@@ -271,13 +271,13 @@ const WhatsAppTab = () => {
         </Card>
 
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" /> Peak Chat Days
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" /> Peak Chat Days
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px] w-full">
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.peakDays}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -352,13 +352,13 @@ const WhatsAppTab = () => {
 
         {/* Sentiment Trend */}
         <Card className="border-none shadow-sm lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-muted-foreground" /> Sentiment Trend
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-muted-foreground" /> Sentiment Trend
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px] w-full">
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sentimentTrend} stackOffset="sign">
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -386,15 +386,15 @@ const WhatsAppTab = () => {
       </div>
 
       {/* Row 3: Topics & Keywords */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-muted-foreground" /> Sentiment by Topic
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" /> Sentiment by Topic
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[240px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sentimentByTopic} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
@@ -419,13 +419,13 @@ const WhatsAppTab = () => {
         </Card>
 
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" /> Trending Keywords
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" /> Trending Keywords
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[240px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={keywordTrends?.slice(0, 10)}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -458,9 +458,9 @@ const WhatsAppTab = () => {
       {
         agentAIPerformance && (
           <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Bot className="w-4 h-4 text-muted-foreground" /> Agent vs AI Performance
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Bot className="w-3.5 h-3.5 text-muted-foreground" /> Agent vs AI Performance
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -526,15 +526,15 @@ const WhatsAppTab = () => {
       }
 
       {/* Row 5: Extreme Messages */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-emerald-700 flex items-center gap-2">
-              <Smile className="w-4 h-4" /> Top Positive Feedback
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
+              <Smile className="w-3.5 h-3.5" /> Top Positive Feedback
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {extremeMessages.mostPositive?.slice(0, 3).map((msg: any, idx: number) => (
                 <div key={idx} className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-sm">
                   <p className="text-foreground italic">"{msg.content}"</p>
@@ -550,13 +550,13 @@ const WhatsAppTab = () => {
         </Card>
 
         <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-rose-700 flex items-center gap-2">
-              <Activity className="w-4 h-4" /> Critical Feedback
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-rose-700 flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5" /> Critical Feedback
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {extremeMessages.mostNegative?.slice(0, 3).map((msg: any, idx: number) => (
                 <div key={idx} className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm">
                   <p className="text-foreground italic">"{msg.content}"</p>

@@ -17,7 +17,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-4 animate-fadeIn">
       <PageHeader
         title="Dashboard"
         description="Comprehensive overview of your business automation metrics and performance"

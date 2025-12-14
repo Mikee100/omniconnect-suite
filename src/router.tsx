@@ -26,6 +26,7 @@ import { useAuthStore } from "./state/authStore";
 import Escalations from "./pages/Escalations";
 import Notifications from "./pages/Notifications";
 import MessengerPage from "./pages/MessengerPage";
+import HealthMonitoring from "./pages/HealthMonitoring";
 
 const queryClient = new QueryClient();
 
@@ -218,6 +219,16 @@ const AppRouter = () => {
               <ProtectedRoute>
                 <Layout>
                   <MessengerPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/health"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <HealthMonitoring />
                 </Layout>
               </ProtectedRoute>
             }

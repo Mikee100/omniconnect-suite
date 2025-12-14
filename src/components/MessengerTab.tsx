@@ -51,16 +51,16 @@ const MessengerTab = () => {
     ];
 
     return (
-        <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-4 animate-fadeIn">
             {/* Top KPI Cards */}
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {/* Total Messages */}
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">Total Messages</p>
-                                <p className="text-3xl font-bold text-foreground">{stats.totalMessages}</p>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Total Messages</p>
+                                <p className="text-2xl font-bold text-foreground">{stats.totalMessages}</p>
                                 <div className="flex items-center gap-1">
                                     <MessageCircle className="h-4 w-4 text-blue-600" />
                                     <span className="text-sm font-medium text-blue-600">
@@ -68,8 +68,8 @@ const MessengerTab = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                <MessageCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
                         </div>
                     </CardContent>
@@ -77,11 +77,11 @@ const MessengerTab = () => {
 
                 {/* Active Conversations */}
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">Active Chats</p>
-                                <p className="text-3xl font-bold text-foreground">{stats.activeConversations}</p>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Active Chats</p>
+                                <p className="text-2xl font-bold text-foreground">{stats.activeConversations}</p>
                                 <div className="flex items-center gap-1">
                                     <Users className="h-4 w-4 text-green-600" />
                                     <span className="text-sm font-medium text-green-600">
@@ -89,8 +89,8 @@ const MessengerTab = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30">
-                                <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
                             </div>
                         </div>
                     </CardContent>
@@ -98,11 +98,11 @@ const MessengerTab = () => {
 
                 {/* Avg Response Time */}
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">Avg Response</p>
-                                <p className="text-3xl font-bold text-foreground">{formatTime(stats.avgResponseTime)}</p>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Avg Response</p>
+                                <p className="text-2xl font-bold text-foreground">{formatTime(stats.avgResponseTime)}</p>
                                 <div className="flex items-center gap-1">
                                     <Clock className="h-4 w-4 text-purple-600" />
                                     <span className="text-sm font-medium text-purple-600">
@@ -119,11 +119,11 @@ const MessengerTab = () => {
 
                 {/* This Month */}
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">This Month</p>
-                                <p className="text-3xl font-bold text-foreground">{stats.messagesThisMonth}</p>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">This Month</p>
+                                <p className="text-2xl font-bold text-foreground">{stats.messagesThisMonth}</p>
                                 <div className="flex items-center gap-1">
                                     <TrendingUp className="h-4 w-4 text-orange-600" />
                                     <span className="text-sm font-medium text-orange-600">
@@ -131,8 +131,8 @@ const MessengerTab = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900/30">
-                                <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                            <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                                <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                             </div>
                         </div>
                     </CardContent>
@@ -140,17 +140,17 @@ const MessengerTab = () => {
             </div>
 
             {/* Charts Row */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                 {/* Message Volume */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-primary" />
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-primary" />
                             Message Volume (Last 7 Days)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={240}>
                             <LineChart data={stats.messagesByDay}>
                                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                 <XAxis dataKey="date" className="text-xs" />
@@ -173,14 +173,14 @@ const MessengerTab = () => {
 
                 {/* Message Direction */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                            <MessageCircle className="h-5 w-5 text-primary" />
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4 text-primary" />
                             Message Direction
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={240}>
                             <PieChart>
                                 <Pie
                                     data={messageDirectionData}
@@ -205,14 +205,14 @@ const MessengerTab = () => {
 
             {/* Top Customers */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
                         Most Active Customers
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {stats.topCustomers?.map((customer: any, index: number) => (
                             <div key={index} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
