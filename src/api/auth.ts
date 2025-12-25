@@ -16,7 +16,11 @@ export interface LoginResponse {
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
   const response = await api.post('/auth/login', { email, password });
-  return response.data;
+  // Backend returns 'access_token', but we need 'token' for consistency
+  return {
+    token: response.data.access_token || response.data.token,
+    user: response.data.user,
+  };
 };
 
 export const logout = async (): Promise<void> => {

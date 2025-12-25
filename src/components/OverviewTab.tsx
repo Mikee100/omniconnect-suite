@@ -7,6 +7,7 @@ import {
   Smile, Bot, Zap, Activity, MessageSquare, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/state/authStore';
 import { businessAnalyticsApi } from '@/api/businessAnalytics';
 import {
   fetchComprehensiveStats,
@@ -37,6 +38,14 @@ const OverviewTab = () => {
 
   const loadAnalytics = async () => {
     try {
+      // Check if user is authenticated before making requests
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        console.warn('No authentication token found. Please log in.');
+        setLoading(false);
+        return;
+      }
+
       const [
         kpisData,
         monthlyData,
@@ -46,7 +55,7 @@ const OverviewTab = () => {
         aiPerfData,
         personalizedData,
         systemData
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         businessAnalyticsApi.getBusinessKPIs(),
         businessAnalyticsApi.getMonthlyRevenue(),
         businessAnalyticsApi.getRevenueByPackage(),
@@ -57,16 +66,41 @@ const OverviewTab = () => {
         fetchSystemStats(),
       ]);
 
-      setKpis(kpisData);
-      setMonthlyRevenue(monthlyData);
-      setRevenueByPackage(packageData);
-      setSeasonalTrends(trendsData);
-      setCustomerEmotions(emotionsData);
-      setAiPerformance(aiPerfData);
-      setPersonalizedResponses(personalizedData);
-      setSystemStats(systemData);
-    } catch (error) {
-      console.error('Failed to load analytics:', error);
+      // Handle each result, setting defaults for failed requests
+      setKpis(kpisData.status === 'fulfilled' ? kpisData.value : null);
+      setMonthlyRevenue(monthlyData.status === 'fulfilled' && Array.isArray(monthlyData.value) ? monthlyData.value : []);
+      setRevenueByPackage(packageData.status === 'fulfilled' && Array.isArray(packageData.value) ? packageData.value : []);
+      setSeasonalTrends(trendsData.status === 'fulfilled' && Array.isArray(trendsData.value) ? trendsData.value : []);
+      setCustomerEmotions(emotionsData.status === 'fulfilled' ? emotionsData.value : null);
+      setAiPerformance(aiPerfData.status === 'fulfilled' ? aiPerfData.value : null);
+      setPersonalizedResponses(personalizedData.status === 'fulfilled' ? personalizedData.value : null);
+      setSystemStats(systemData.status === 'fulfilled' ? systemData.value : null);
+
+      // Log any errors that occurred
+      const errors = [kpisData, monthlyData, packageData, trendsData, emotionsData, aiPerfData, personalizedData, systemData]
+        .filter(result => result.status === 'rejected')
+        .map(result => (result as PromiseRejectedResult).reason);
+      
+      if (errors.length > 0) {
+        const isConnectionError = errors.some((error: any) => 
+          error?.code === 'ERR_NETWORK' || 
+          error?.message?.includes('Failed to fetch') ||
+          error?.message?.includes('ERR_CONNECTION_REFUSED')
+        );
+        
+        if (!isConnectionError) {
+          console.error('Some analytics failed to load:', errors);
+        }
+      }
+    } catch (error: any) {
+      // Only log if it's not a connection error (backend might be down)
+      const isConnectionError = error?.code === 'ERR_NETWORK' || 
+                                error?.message?.includes('Failed to fetch') ||
+                                error?.message?.includes('ERR_CONNECTION_REFUSED');
+      
+      if (!isConnectionError) {
+        console.error('Failed to load analytics:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -245,10 +279,15 @@ const OverviewTab = () => {
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={monthlyRevenue}>
+              <LineChart data={Array.isArray(monthlyRevenue) ? monthlyRevenue : []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
                 <Tooltip
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                   formatter={(value: any) => formatCurrency(value)}
@@ -280,7 +319,7 @@ const OverviewTab = () => {
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
-                  data={revenueByPackage}
+                  data={Array.isArray(revenueByPackage) ? revenueByPackage : []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -290,7 +329,7 @@ const OverviewTab = () => {
                   dataKey="revenue"
                   nameKey="package"
                 >
-                  {revenueByPackage.map((entry, index) => (
+                  {(Array.isArray(revenueByPackage) ? revenueByPackage : []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -315,10 +354,15 @@ const OverviewTab = () => {
           </CardHeader>
           <CardContent className="pt-4">
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={seasonalTrends}>
+              <BarChart data={Array.isArray(seasonalTrends) ? seasonalTrends : []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
                 <Tooltip
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                 />
@@ -447,10 +491,15 @@ const OverviewTab = () => {
               </CardHeader>
               <CardContent className="pt-4">
                 <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={customerEmotions.recentTrends}>
+                  <AreaChart data={Array.isArray(customerEmotions?.recentTrends) ? customerEmotions.recentTrends : []}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis className="text-xs" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                    />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                     />
@@ -670,10 +719,21 @@ const OverviewTab = () => {
             </CardHeader>
             <CardContent className="pt-4">
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={personalizedResponses.byCommunicationStyle}>
+                <BarChart data={Array.isArray(personalizedResponses?.byCommunicationStyle) 
+                  ? personalizedResponses.byCommunicationStyle.map((item: any) => ({
+                      communicationStyle: item.style || item.communicationStyle || 'Unknown',
+                      total: item.total || 0,
+                      successful: item.successful || 0,
+                    }))
+                  : []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="style" className="text-xs" />
-                  <YAxis className="text-xs" />
+                  <XAxis 
+                    dataKey="communicationStyle" 
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                   />

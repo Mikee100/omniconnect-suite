@@ -32,10 +32,16 @@ export function Navbar() {
       try {
         const baseUrl = API_BASE_URL;
         const response = await fetch(`${baseUrl}/api/notifications/unread-count`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         const data = await response.json();
         setUnreadCount(data.count || 0);
-      } catch (error) {
-        console.error('Failed to fetch unread count:', error);
+      } catch (error: any) {
+        // Only log if it's not a connection error (backend might be down)
+        if (error?.message && !error.message.includes('Failed to fetch') && !error.message.includes('ERR_CONNECTION_REFUSED')) {
+          console.error('Failed to fetch unread count:', error);
+        }
       }
     };
 
@@ -44,6 +50,9 @@ export function Navbar() {
     // Initialize WebSocket connection for real-time notification updates
     socketRef.current = io(API_BASE_URL, {
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
     });
 
     socketRef.current.on('connect', () => {
@@ -54,6 +63,16 @@ export function Navbar() {
 
     socketRef.current.on('disconnect', () => {
       console.log('Navbar: Disconnected from WebSocket');
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      // Suppress connection error logs when backend is not available
+      // This is expected when the backend server is not running
+      if (error.message.includes('xhr poll error') || error.message.includes('websocket error')) {
+        // Silently handle connection errors - backend might be down
+        return;
+      }
+      console.error('Navbar: WebSocket connection error:', error);
     });
 
     // Listen for notification count updates

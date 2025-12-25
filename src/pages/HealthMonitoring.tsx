@@ -24,8 +24,28 @@ interface HealthResponse {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const fetchHealthStatus = async (endpoint: string): Promise<HealthResponse> => {
-  const response = await axios.get(`${API_BASE_URL}/api${endpoint}`);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api${endpoint}`);
+    return response.data;
+  } catch (error: any) {
+    // Handle 404 errors gracefully - endpoint might not be available in all environments
+    if (error.response?.status === 404) {
+      // Return a default response indicating the endpoint is not available
+      return {
+        status: 'error',
+        info: {},
+        error: {
+          endpoint: {
+            status: 'down',
+            message: 'Health monitoring endpoint not available',
+            error: 'Endpoint not found (404)'
+          }
+        }
+      };
+    }
+    // Re-throw other errors
+    throw error;
+  }
 };
 
 export default function HealthMonitoring() {
@@ -37,8 +57,21 @@ export default function HealthMonitoring() {
     queryKey: ['health-detailed'],
     queryFn: () => fetchHealthStatus('/health/detailed'),
     refetchInterval: autoRefresh ? 5000 : false, // Refresh every 5 seconds if enabled
-    retry: 2,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 404 errors - endpoint is not available
+      if (error?.response?.status === 404) {
+        return false;
+      }
+      // Retry other errors up to 2 times
+      return failureCount < 2;
+    },
     retryDelay: 1000,
+    // Suppress error logging for 404s to prevent console spam
+    onError: (error: any) => {
+      if (error?.response?.status !== 404) {
+        console.error('Health check error:', error);
+      }
+    },
   });
 
   useEffect(() => {

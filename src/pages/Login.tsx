@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/state/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login);
+  const { login } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,16 +21,24 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      toast({
-        title: 'Login successful',
-        description: 'Welcome back!',
-      });
-      navigate('/');
-    } catch (error) {
+      const result = await login(email, password);
+      if (result.success) {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+        });
+        navigate('/');
+      } else {
+        toast({
+          title: 'Login failed',
+          description: result.error || 'Invalid email or password',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
       toast({
         title: 'Login failed',
-        description: 'Invalid email or password',
+        description: error?.message || 'Invalid email or password',
         variant: 'destructive',
       });
     } finally {

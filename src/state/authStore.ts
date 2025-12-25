@@ -12,7 +12,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (token: string, user: User) => void;
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
@@ -24,23 +24,10 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      login: async (email: string, password: string) => {
-        // TODO: Replace with actual API call
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // Mock successful login
-        const mockUser = {
-          id: '1',
-          email,
-          name: 'Admin User',
-          role: 'admin',
-        };
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
+      login: (token: string, user: User) => {
         set({
-          user: mockUser,
-          token: mockToken,
+          user,
+          token,
           isAuthenticated: true,
         });
       },
