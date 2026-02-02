@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter, RefreshCw, CheckCircle, FileText, Send, Download, TrendingUp, DollarSign, BarChart3, Activity, MoreVertical, Edit, Trash2, MessageSquare, Share2, Copy, X, Check, AlertCircle, Zap, Target, Users, CalendarDays, Package as PackageIcon, ArrowUpDown, FileDown, Eye, EyeOff, Bell, History, CreditCard, Phone, Mail, ExternalLink, ArrowRight, Info, MapPin, Timer, Receipt, MessageCircle } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, Clock, User, Filter, RefreshCw, CheckCircle, FileText, Send, Download, TrendingUp, DollarSign, BarChart3, Activity, MoreVertical, Edit, Trash2, MessageSquare, Share2, X, Check, AlertCircle, Zap, Target, Users, CalendarDays, Package as PackageIcon, ArrowUpDown, FileDown, Eye, EyeOff, Bell, History, CreditCard, Phone, Mail, ExternalLink, ArrowRight, Info, MapPin, Timer, Receipt, MessageCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { listBookings, createBooking, getServices, getAvailableSlots, getAvailableHours, updateBookingDraft, pollBookingStatus, getCalendarEvents, getBooking, updateBooking, Booking as BookingType, Service, Package } from '@/api/bookings';
 import { invoicesApi, Invoice } from '@/api/invoices';
@@ -39,6 +39,7 @@ import { getPackageColor } from '@/utils/packageColors';
 import { DayContentProps } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface Booking {
   id: string;
@@ -49,6 +50,31 @@ interface Booking {
   time: string;
   status: 'provisional' | 'confirmed' | 'cancelled';
   googleEventId?: string;
+}
+
+/** Format a raw phone string for display (e.g. 254721840961 → +254 721 840 961) */
+function formatPhoneDisplay(phone: string): string {
+  if (!phone || !phone.trim()) return phone;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 9) return phone;
+  if (digits.length >= 12) {
+    return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
+  }
+  if (digits.length >= 9) {
+    return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return phone;
+}
+
+/** Shorten "Messenger User 24720119027667423" to "Messenger • …7623" */
+function shortenMessengerDisplay(name: string): string {
+  if (!name || !name.trim()) return name;
+  const match = name.match(/^Messenger\s+User\s+(\d+)$/i);
+  if (match) {
+    const last4 = match[1].slice(-4);
+    return `Messenger • …${last4}`;
+  }
+  return name;
 }
 
 export default function Bookings() {
@@ -72,7 +98,7 @@ export default function Bookings() {
   const [syncing, setSyncing] = useState(false);
   const [invoices, setInvoices] = useState<Record<string, Invoice>>({});
   const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
-  
+
   // New state for enhanced features
   const [statistics, setStatistics] = useState({
     total: 0,
@@ -93,7 +119,7 @@ export default function Bookings() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [bookingNotes, setBookingNotes] = useState<Record<string, string>>({});
   const [editingNote, setEditingNote] = useState<string | null>(null);
-  
+
   // Booking details modal state
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<Booking | null>(null);
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
@@ -102,7 +128,7 @@ export default function Bookings() {
   const [bookingReminders, setBookingReminders] = useState<Reminder[]>([]);
   const [bookingFollowups, setBookingFollowups] = useState<Followup[]>([]);
   const [bookingPayments, setBookingPayments] = useState<any[]>([]);
-  
+
   // Edit/Reschedule state
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -112,12 +138,14 @@ export default function Bookings() {
   const [savingBooking, setSavingBooking] = useState(false);
   const [rescheduleAvailableHours, setRescheduleAvailableHours] = useState<{ time: string, available: boolean }[]>([]);
   const [loadingRescheduleHours, setLoadingRescheduleHours] = useState(false);
-  
+
   // Customer context state
   const [customerContextOpen, setCustomerContextOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerHistory, setCustomerHistory] = useState<any>(null);
   const [loadingCustomerHistory, setLoadingCustomerHistory] = useState(false);
+
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'pod'>('mpesa');
 
   // Helper to get package by id
   const getPackageById = (id: string) => packages.find(pkg => pkg.id === id);
@@ -300,19 +328,19 @@ export default function Bookings() {
     }
   }, [rescheduleDate, rescheduleService, editDialogOpen]);
 
-  // Debug: Log timeline data when selectedDate changes
-  useEffect(() => {
-    if (selectedDate) {
-      const dayBookings = getBookingsForDate(selectedDate);
-      const dayEvents = getCalendarEventsForDate(selectedDate);
-      console.log('Timeline Debug:', {
-        selectedDate: selectedDate.toDateString(),
-        dayBookings: dayBookings.map(b => ({ name: b.customerName, time: b.time, service: b.service })),
-        dayEvents: dayEvents.map(e => ({ summary: e.summary, start: e.start?.dateTime || e.start?.date })),
-        calendarEventsLength: calendarEvents.length
-      });
-    }
-  }, [selectedDate, bookings, calendarEvents]);
+  // Debug: Log timeline data when selectedDate changes (commented out to prevent constant re-renders)
+  // useEffect(() => {
+  //   if (selectedDate) {
+  //     const dayBookings = getBookingsForDate(selectedDate);
+  //     const dayEvents = getCalendarEventsForDate(selectedDate);
+  //     console.log('Timeline Debug:', {
+  //       selectedDate: selectedDate.toDateString(),
+  //       dayBookings: dayBookings.map(b => ({ name: b.customerName, time: b.time, service: b.service })),
+  //       dayEvents: dayEvents.map(e => ({ summary: e.summary, start: e.start?.dateTime || e.start?.date })),
+  //       calendarEventsLength: calendarEvents.length
+  //     });
+  //   }
+  // }, [selectedDate, bookings, calendarEvents]);
 
   const fetchBookings = async () => {
     try {
@@ -330,19 +358,23 @@ export default function Bookings() {
         if (name && name.startsWith('WhatsApp User ')) {
           name = name.replace(/^WhatsApp User\s+/, '');
         }
-        
+
+        // Shorten "Messenger User 24720119027667423" for display
+        name = shortenMessengerDisplay(name);
+
         // If name is an ID, missing, or 'Admin User', prefer phone, else fallback to 'No Name / No Phone'
         if (!name || name.trim().toLowerCase() === 'admin user' || isId(name)) {
           if (b.customer.phone && b.customer.phone.trim() !== '' && !isId(b.customer.phone)) {
-            name = b.customer.phone;
+            name = formatPhoneDisplay(b.customer.phone);
           } else {
             name = 'No Name / No Phone';
           }
         }
+        const rawPhone = b.customer.phone || '';
         return {
           id: b.id,
           customerName: name,
-          customerPhone: b.customer.phone || '',
+          customerPhone: rawPhone ? formatPhoneDisplay(rawPhone) : '',
           service: b.service,
           date: new Date(b.dateTime),
           time: new Date(b.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -383,7 +415,7 @@ export default function Bookings() {
     const hours: { time: string, available: boolean }[] = [];
     const baseDate = new Date(date);
     baseDate.setHours(9, 0, 0, 0);
-    
+
     for (let h = 9; h < 17; h++) {
       for (let m = 0; m < 60; m += 30) {
         const timeSlot = new Date(baseDate);
@@ -402,7 +434,7 @@ export default function Bookings() {
       setAvailableHours([]);
       return;
     }
-    
+
     // Always try to fetch from API if we have a date (service is optional)
     try {
       // Format local date as YYYY-MM-DD
@@ -411,7 +443,7 @@ export default function Bookings() {
       console.log('DEBUG: Fetching available hours for date:', localDateStr, 'service:', selectedService);
       const hours = await getAvailableHours(localDateStr, selectedService);
       console.log('DEBUG: Available hours response:', hours);
-      
+
       // If we got hours, use them; otherwise generate fallback
       if (Array.isArray(hours) && hours.length > 0) {
         setAvailableHours(hours);
@@ -530,7 +562,25 @@ export default function Bookings() {
         recipientPhone: phoneToSend,
       });
 
-      // 2. Trigger STK push and payment
+      // 2. For Pay on Delivery, complete booking immediately (no verification)
+      if (paymentMethod === 'pod') {
+        const response = await fetch(`${API_BASE}/api/bookings/complete-pod/${user.id}`, {
+          method: 'POST',
+        });
+        if (response.ok) {
+          setIsDialogOpen(false);
+          fetchBookings();
+          toast({
+            title: 'Booking Confirmed!',
+            description: 'Your Pay on Delivery booking has been confirmed.',
+          });
+        } else {
+          throw new Error('Failed to confirm Pay on Delivery booking');
+        }
+        setCreating(false);
+        return;
+      }
+
       const result = await fetch(`${API_BASE}/api/bookings/complete-draft/${user.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -547,7 +597,7 @@ export default function Bookings() {
 
       // Poll for payment/booking confirmation using checkoutRequestId
       let pollCount = 0;
-      const maxPolls = 20; // e.g. poll for up to 60 seconds (20 x 3s)
+      const maxPolls = 40; // poll for up to 2 minutes (40 x 3s)
       const pollInterval = 3000;
       let status = 'pending';
       const checkoutRequestId = data.checkoutRequestId;
@@ -555,38 +605,49 @@ export default function Bookings() {
         throw new Error('No checkoutRequestId returned from backend');
       }
       const { pollPaymentStatus } = await import('@/api/payments');
-      while (status === 'pending' && pollCount < maxPolls) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await pollPaymentStatus(checkoutRequestId);
-        console.log('[pollPaymentStatus]', res, 'pollCount:', pollCount, 'status:', status);
-        if (!res || typeof res.status === 'undefined') {
-          console.warn('No status returned from pollPaymentStatus:', res);
-          break;
-        }
-        status = res.status;
-        if (status === 'success' || status === 'confirmed') {
-          toast({
-            title: 'Booking Confirmed!',
-            description: 'Your payment was received and your booking is now confirmed.',
-            variant: 'default',
-          });
-          fetchBookings();
-          setIsPaymentPending(false);
-          break;
+      // Keep polling until success/confirmed or maxPolls (don't exit on not_found or pending)
+      while (pollCount < maxPolls) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const res = await pollPaymentStatus(checkoutRequestId);
+          console.log('[pollPaymentStatus]', res, 'pollCount:', pollCount, 'status:', status);
+          if (!res || typeof res.status === 'undefined') {
+            console.warn('No status returned from pollPaymentStatus:', res);
+          } else {
+            status = res.status;
+            if (status === 'success' || status === 'confirmed') {
+              toast({
+                title: 'Booking Confirmed!',
+                description: 'Your payment was received and your booking is now confirmed.',
+                variant: 'default',
+              });
+              fetchBookings();
+              setIsPaymentPending(false);
+              setSelectedDate(new Date());
+              setSelectedTime('');
+              setCreating(false);
+              return;
+            }
+          }
+        } catch (pollError) {
+          console.warn('[pollPaymentStatus] request failed:', pollError);
         }
         await new Promise(resolve => setTimeout(resolve, pollInterval));
         pollCount++;
       }
+      // Done polling without success: close modal and show message
+      setIsPaymentPending(false);
       if (status !== 'success' && status !== 'confirmed') {
         toast({
           title: 'Payment Pending',
-          description: `We did not receive payment confirmation in time. Last status: ${status}. If you paid, please check your messages or contact support.`,
+          description: `We did not receive payment confirmation in time. Last status: ${status}. If you paid, please refresh the page to see your booking or contact support.`,
           variant: 'default',
         });
       }
       setSelectedDate(new Date());
       setSelectedTime('');
     } catch (error) {
+      setIsPaymentPending(false);
       toast({
         title: 'Error',
         description: 'Failed to initiate payment or booking',
@@ -651,7 +712,6 @@ export default function Bookings() {
   const handleExport = async (format: 'csv' | 'json') => {
     try {
       const data = filteredBookings.map(b => ({
-        id: b.id,
         customer: b.customerName,
         phone: b.customerPhone || '',
         service: b.service,
@@ -661,9 +721,8 @@ export default function Bookings() {
       }));
 
       if (format === 'csv') {
-        const headers = ['ID', 'Customer', 'Phone', 'Service', 'Date', 'Time', 'Status'];
+        const headers = ['Customer', 'Phone', 'Service', 'Date', 'Time', 'Status'];
         const rows = data.map(d => [
-          d.id,
           d.customer,
           d.phone,
           d.service,
@@ -736,12 +795,12 @@ export default function Bookings() {
     setLoadingBookingDetails(true);
     setSelectedBookingDetails(booking);
     setBookingDetailsOpen(true);
-    
+
     try {
       // Fetch full booking data (includes payments, reminders, followups)
       const bookingData = await getBooking(booking.id);
       setFullBookingData(bookingData);
-      
+
       // Extract payments, reminders, and followups from booking data
       if (bookingData.payments) {
         setBookingPayments(Array.isArray(bookingData.payments) ? bookingData.payments : []);
@@ -756,7 +815,7 @@ export default function Bookings() {
           setBookingPayments([]);
         }
       }
-      
+
       if (bookingData.reminders) {
         setBookingReminders(Array.isArray(bookingData.reminders) ? bookingData.reminders : []);
       } else {
@@ -768,7 +827,7 @@ export default function Bookings() {
           setBookingReminders([]);
         }
       }
-      
+
       if (bookingData.followups) {
         setBookingFollowups(Array.isArray(bookingData.followups) ? bookingData.followups : []);
       } else {
@@ -795,25 +854,25 @@ export default function Bookings() {
   const fetchCustomerHistory = async (booking: Booking) => {
     setLoadingCustomerHistory(true);
     setCustomerContextOpen(true);
-    
+
     try {
       // Get full booking data to access customerId
       const fullBookingData = await getBooking(booking.id);
       const customerId = fullBookingData.customerId || (fullBookingData.customer as any)?.id;
-      
+
       if (!customerId) {
         throw new Error('Customer ID not found');
       }
 
       setSelectedCustomerId(customerId);
-      
+
       const [customer, customerBookingsData] = await Promise.all([
         getCustomer(customerId).catch(() => null),
         getCustomerBookings(customerId).catch(() => []),
       ]);
-      
+
       const customerBookings = Array.isArray(customerBookingsData) ? customerBookingsData : (customerBookingsData?.bookings || []);
-      
+
       // Calculate total spent from payments
       let totalSpent = 0;
       try {
@@ -827,11 +886,11 @@ export default function Bookings() {
       } catch (err) {
         console.error('Failed to fetch payments:', err);
       }
-      
+
       setCustomerHistory({
-        customer: customer || { 
-          id: customerId, 
-          name: booking.customerName, 
+        customer: customer || {
+          id: customerId,
+          name: booking.customerName,
           phone: booking.customerPhone,
           email: null,
           platform: 'unknown',
@@ -1090,14 +1149,13 @@ export default function Bookings() {
           }}
         />
       ),
-      accessor: 'id' as keyof Booking,
-      cell: (row: Booking) => (
+      accessor: (row: Booking) => (
         <Checkbox
           checked={selectedBookings.includes(row.id)}
           onCheckedChange={() => toggleBookingSelection(row.id)}
           onClick={(e) => e.stopPropagation()}
         />
-      )
+      ),
     },
     {
       header: 'Customer',
@@ -1286,17 +1344,6 @@ export default function Bookings() {
                     Cancel
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    navigator.clipboard.writeText(row.id);
-                    toast({ title: 'Copied', description: 'Booking ID copied to clipboard' });
-                  }}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy ID
-                </Button>
               </div>
             </PopoverContent>
           </Popover>
@@ -1318,7 +1365,7 @@ export default function Bookings() {
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
 
         {/* Payment Pending Modal */}
-        <Dialog open={isPaymentPending}>
+        <Dialog open={isPaymentPending} onOpenChange={setIsPaymentPending}>
           <DialogContent className="sm:max-w-md">
             <div className="flex flex-col items-center justify-center gap-4 py-8">
               <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-primary mb-3 shadow-lg shadow-primary/20" />
@@ -1334,18 +1381,18 @@ export default function Bookings() {
             HEADER SECTION
             ============================================ */}
         <div className="space-y-4">
-        <PageHeader
-          title="Bookings"
-          description="Manage appointments and schedules"
-          actions={
+          <PageHeader
+            title="Bookings"
+            description="Manage appointments and schedules"
+            actions={
               <div className="flex items-center gap-2 flex-wrap">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="lg" className="shadow-md hover:shadow-lg transition-all">
-                  <Plus className="mr-2 h-5 w-5" />
-                  New Booking
-                </Button>
-              </DialogTrigger>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="lg" className="shadow-md hover:shadow-lg transition-all">
+                      <Plus className="mr-2 h-5 w-5" />
+                      New Booking
+                    </Button>
+                  </DialogTrigger>
                 </Dialog>
                 <Button
                   variant="outline"
@@ -1380,7 +1427,7 @@ export default function Bookings() {
                         <FileText className="h-4 w-4 mr-2" />
                         Export as JSON
                       </Button>
-                  </div>
+                    </div>
                   </PopoverContent>
                 </Popover>
               </div>
@@ -1389,77 +1436,77 @@ export default function Bookings() {
 
           {/* Statistics Cards - Overview at Top */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-foreground">{statistics.total}</div>
-                  <p className="text-xs text-muted-foreground mt-1">All time</p>
+            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold text-foreground">{statistics.total}</div>
+                    <p className="text-xs text-muted-foreground mt-1">All time</p>
                   </div>
-                <div className="p-3 rounded-full bg-primary/10">
-                  <CalendarIcon className="h-6 w-6 text-primary" />
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <CalendarIcon className="h-6 w-6 text-primary" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-green-600">{statistics.confirmed}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {statistics.total > 0 ? Math.round((statistics.confirmed / statistics.total) * 100) : 0}% of total
-                  </p>
-                              </div>
-                <div className="p-3 rounded-full bg-green-100">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                            </div>
+            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold text-green-600">{statistics.confirmed}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {statistics.total > 0 ? Math.round((statistics.confirmed / statistics.total) * 100) : 0}% of total
+                    </p>
                   </div>
-            </CardContent>
-          </Card>
+                  <div className="p-3 rounded-full bg-green-100">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-blue-600">{statistics.thisMonthBookings}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Bookings this month</p>
-                      </div>
-                <div className="p-3 rounded-full bg-blue-100">
-                  <TrendingUp className="h-6 w-6 text-blue-600" />
+            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold text-blue-600">{statistics.thisMonthBookings}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Bookings this month</p>
+                  </div>
+                  <div className="p-3 rounded-full bg-blue-100">
+                    <TrendingUp className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold text-purple-600">
+                      KSh {statistics.revenue.toLocaleString()}
                     </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-purple-600">
-                    KSh {statistics.revenue.toLocaleString()}
-                          </div>
-                  <p className="text-xs text-muted-foreground mt-1">Total revenue</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total revenue</p>
+                  </div>
+                  <div className="p-3 rounded-full bg-purple-100">
+                    <DollarSign className="h-6 w-6 text-purple-600" />
+                  </div>
                 </div>
-                <div className="p-3 rounded-full bg-purple-100">
-                  <DollarSign className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -1476,14 +1523,14 @@ export default function Bookings() {
                     <span className="text-sm font-medium text-foreground">
                       {selectedBookings.length} booking{selectedBookings.length > 1 ? 's' : ''} selected
                     </span>
-                                <Button
+                    <Button
                       variant="ghost"
-                                  size="sm"
+                      size="sm"
                       onClick={() => setSelectedBookings([])}
-                                >
+                    >
                       <X className="h-4 w-4" />
-                                </Button>
-                          </div>
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -1501,109 +1548,109 @@ export default function Bookings() {
                       <X className="h-4 w-4 mr-2" />
                       Cancel Selected
                     </Button>
-                      </div>
-                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Advanced Filters */}
           {showAdvancedFilters && (
-          <Card className="border-border/50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Advanced Filters</CardTitle>
-              <CardDescription>Filter bookings by multiple criteria</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Date Range</Label>
-                  <div className="flex gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange.from ? dateRange.from.toLocaleDateString() : 'From'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={dateRange.from}
-                          onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange.to ? dateRange.to.toLocaleDateString() : 'To'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={dateRange.to}
-                          onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
-                        />
-                      </PopoverContent>
-                    </Popover>
+            <Card className="border-border/50 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Advanced Filters</CardTitle>
+                <CardDescription>Filter bookings by multiple criteria</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date Range</Label>
+                    <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange.from ? dateRange.from.toLocaleDateString() : 'From'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dateRange.from}
+                            onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange.to ? dateRange.to.toLocaleDateString() : 'To'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dateRange.to}
+                            onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Package/Service</Label>
+                    <Select value={packageFilter} onValueChange={setPackageFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All packages" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Packages</SelectItem>
+                        {packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.name}>
+                            {pkg.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quick Date Filters</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const today = new Date();
+                          setDateRange({ from: today, to: today });
+                        }}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const today = new Date();
+                          const weekAgo = new Date(today);
+                          weekAgo.setDate(today.getDate() - 7);
+                          setDateRange({ from: weekAgo, to: today });
+                        }}
+                      >
+                        Last 7 Days
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDateRange({})}
+                      >
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Package/Service</Label>
-                  <Select value={packageFilter} onValueChange={setPackageFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All packages" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Packages</SelectItem>
-                      {packages.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.name}>
-                          {pkg.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Quick Date Filters</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const today = new Date();
-                        setDateRange({ from: today, to: today });
-                      }}
-                    >
-                      Today
-                  </Button>
-                  <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const today = new Date();
-                        const weekAgo = new Date(today);
-                        weekAgo.setDate(today.getDate() - 7);
-                        setDateRange({ from: weekAgo, to: today });
-                      }}
-                    >
-                      Last 7 Days
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDateRange({})}
-                    >
-                      Clear
-                  </Button>
-                </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           )}
 
           {/* Quick Search & Status Filter - Always Visible */}
@@ -1664,97 +1711,97 @@ export default function Bookings() {
 
           <TabsContent value="overview" className="space-y-6">
             {/* Calendar & Selected Date Bookings */}
-        <Card className="border-border/50 shadow-xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 pb-6 shadow-lg">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
-                  <CalendarIcon className="h-6 w-6" />
+            <Card className="border-border/50 shadow-xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 pb-6 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                      <CalendarIcon className="h-6 w-6" />
+                    </div>
+                    Booking Calendar
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-md hover:shadow-lg transition-all"
+                    onClick={handleSyncCalendar}
+                    disabled={syncing}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Syncing...' : 'Sync Google Calendar'}
+                  </Button>
                 </div>
-                Booking Calendar
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-md hover:shadow-lg transition-all"
-                onClick={handleSyncCalendar}
-                disabled={syncing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing...' : 'Sync Google Calendar'}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 sm:p-8 bg-card">
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Left: Large Calendar */}
-              <div className="flex justify-center items-start">
-                <div className="w-full">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-lg border-2 border-gray-200 p-4 w-full [&>div]:w-full [&_table]:w-full [&_td]:p-3 [&_th]:p-3 [&_button]:h-12 [&_button]:w-12 [&_button]:text-base"
-                    dayContent={renderDayContent}
-                  />
-                </div>
-              </div>
+              </CardHeader>
+              <CardContent className="p-6 sm:p-8 bg-card">
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Left: Large Calendar */}
+                  <div className="flex justify-center items-start">
+                    <div className="w-full">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        className="rounded-lg border-2 border-gray-200 p-4 w-full [&>div]:w-full [&_table]:w-full [&_td]:p-3 [&_th]:p-3 [&_button]:h-12 [&_button]:w-12 [&_button]:text-base"
+                        dayContent={renderDayContent}
+                      />
+                    </div>
+                  </div>
 
-              {/* Right: Bookings for Selected Date */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedDate ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Select a date'}
-                </h3>
-                <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
-                  {(() => {
-                    const selectedDayStr = selectedDate ? selectedDate.toDateString() : '';
-                    const bookingsForDay = bookings.filter(b => b.date.toDateString() === selectedDayStr);
+                  {/* Right: Bookings for Selected Date */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {selectedDate ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Select a date'}
+                    </h3>
+                    <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
+                      {(() => {
+                        const selectedDayStr = selectedDate ? selectedDate.toDateString() : '';
+                        const bookingsForDay = bookings.filter(b => b.date.toDateString() === selectedDayStr);
 
-                    if (!selectedDate) {
-                      return (
-                        <div className="text-center py-16 text-muted-foreground">
-                          <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                          <p className="text-sm">Select a date to view bookings</p>
-                        </div>
-                      );
-                    }
-                    if (bookingsForDay.length === 0) {
-                      return (
-                        <div className="text-center py-16 text-muted-foreground">
-                          <Clock className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                          <p className="text-sm">No bookings for this date</p>
-                        </div>
-                      );
-                    }
-
-                    return bookingsForDay.map(booking => (
-                      <div key={booking.id} className="group flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-muted/50 to-background hover:from-primary/5 hover:to-muted/50 transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md">
-                        <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0 shadow-sm ring-2 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
-                          <p className="text-sm text-muted-foreground mt-1">{booking.service}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                            <Clock className="h-4 w-4" />
-                            {booking.time}
-                          </div>
-                          {booking.googleEventId && (
-                            <div className="flex items-center gap-1.5 text-xs text-success font-medium mt-2">
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              Synced to Google Calendar
+                        if (!selectedDate) {
+                          return (
+                            <div className="text-center py-16 text-muted-foreground">
+                              <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                              <p className="text-sm">Select a date to view bookings</p>
                             </div>
-                          )}
-                        </div>
-                        <Badge variant={getStatusVariant(booking.status)} className="capitalize shadow-sm">
-                          {booking.status}
-                        </Badge>
-                      </div>
-                    ));
-                  })()}
+                          );
+                        }
+                        if (bookingsForDay.length === 0) {
+                          return (
+                            <div className="text-center py-16 text-muted-foreground">
+                              <Clock className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                              <p className="text-sm">No bookings for this date</p>
+                            </div>
+                          );
+                        }
+
+                        return bookingsForDay.map(booking => (
+                          <div key={booking.id} className="group flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-muted/50 to-background hover:from-primary/5 hover:to-muted/50 transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md">
+                            <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0 shadow-sm ring-2 ring-white" style={{ backgroundColor: getPackageColor(booking.service) }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">{booking.customerName}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{booking.service}</p>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                                <Clock className="h-4 w-4" />
+                                {booking.time}
+                              </div>
+                              {booking.googleEventId && (
+                                <div className="flex items-center gap-1.5 text-xs text-success font-medium mt-2">
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  Synced to Google Calendar
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant={getStatusVariant(booking.status)} className="capitalize shadow-sm">
+                              {booking.status}
+                            </Badge>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
             {/* Main Content Grid: Upcoming Bookings + Timeline */}
             <div className="grid lg:grid-cols-3 gap-6">
@@ -1862,7 +1909,7 @@ export default function Bookings() {
                   <CardTitle className="flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <BarChart3 className="h-5 w-5 text-primary" />
-      </div>
+                    </div>
                     Booking Status Distribution
                   </CardTitle>
                   <CardDescription>Current booking status breakdown</CardDescription>
@@ -1873,7 +1920,7 @@ export default function Bookings() {
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 rounded-full bg-green-500"></div>
                         <span className="font-medium">Confirmed</span>
-    </div>
+                      </div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-green-700 dark:text-green-400">{statistics.confirmed}</span>
                         {statistics.total > 0 && (
@@ -2027,133 +2074,162 @@ export default function Bookings() {
         {/* ============================================
             DIALOGS & MODALS
             ============================================ */}
-        
+
         {/* Create Booking Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-border/50 shadow-2xl">
-                <DialogHeader className="border-b border-border/50 pb-4">
-                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                    Create New Booking
-                  </DialogTitle>
-                </DialogHeader>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-border/50 shadow-2xl">
+            <DialogHeader className="border-b border-border/50 pb-4">
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Create New Booking
+              </DialogTitle>
+            </DialogHeader>
 
-                <div className="grid gap-6 py-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="recipientName">Customer Name</Label>
-                    <Input
-                      id="recipientName"
-                      value={recipientName}
-                      onChange={e => setRecipientName(e.target.value)}
-                      placeholder="Enter customer name"
-                      className="h-11"
-                    />
-                  </div>
+            <div className="grid gap-6 py-6">
+              <div className="grid gap-2">
+                <Label htmlFor="recipientName">Customer Name</Label>
+                <Input
+                  id="recipientName"
+                  value={recipientName}
+                  onChange={e => setRecipientName(e.target.value)}
+                  placeholder="Enter customer name"
+                  className="h-11"
+                />
+              </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="recipientPhone">Phone Number</Label>
-                    <Input
-                      id="recipientPhone"
-                      value={recipientPhone}
-                      onChange={e => setRecipientPhone(e.target.value)}
-                      placeholder="Enter phone number"
-                      className="h-11"
-                    />
-                  </div>
+              <div className="grid gap-2">
+                <Label htmlFor="recipientPhone">Phone Number</Label>
+                <Input
+                  id="recipientPhone"
+                  value={recipientPhone}
+                  onChange={e => setRecipientPhone(e.target.value)}
+                  placeholder="Enter phone number"
+                  className="h-11"
+                />
+              </div>
 
-                  <div className="grid gap-2">
-                    <Label>Package</Label>
-                    <Select value={selectedPackage} onValueChange={val => {
-                      setSelectedPackage(val);
-                      const pkg = getPackageById(val);
-                      if (pkg) setSelectedService(pkg.name);
-                    }}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select a package" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(packages) && packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            <div className="flex items-center justify-between w-full gap-2">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-2 h-2 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: getPackageColor(pkg.name) }}
-                                />
-                                <span>{pkg.name}</span>
-                              </div>
-                              <span className="text-muted-foreground text-sm">{pkg.price}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="grid gap-2">
-                      <Label>Date</Label>
-                      <div className="border rounded-md p-2 flex justify-center">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          className="rounded-md"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Time</Label>
-                      <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
-                        {availableHours.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-                            <Clock className="h-8 w-8 mb-2 opacity-20" />
-                            <p className="text-sm">No available times.</p>
-                            <p className="text-xs mt-1">Select a date and package first.</p>
+              <div className="grid gap-2">
+                <Label>Package</Label>
+                <Select value={selectedPackage} onValueChange={val => {
+                  setSelectedPackage(val);
+                  const pkg = getPackageById(val);
+                  if (pkg) setSelectedService(pkg.name);
+                }}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select a package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.isArray(packages) && packages.map((pkg) => (
+                      <SelectItem key={pkg.id} value={pkg.id}>
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: getPackageColor(pkg.name) }}
+                            />
+                            <span>{pkg.name}</span>
                           </div>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2 p-2">
-                            {availableHours.map(({ time, available }) => {
-                              const d = new Date(time);
-                              const timeStr = d.toTimeString().split(' ')[0];
-                              const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                              const isSelected = selectedTime === timeStr;
+                          <span className="text-muted-foreground text-sm">{pkg.price}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                              // For admins, allow selecting even if marked as unavailable (show warning style)
-                              return (
-                                <Button
-                                  key={time}
-                                  variant={isSelected ? "default" : available ? "outline" : "outline"}
-                                  disabled={false} // Always enabled for admins
-                                  onClick={() => setSelectedTime(timeStr)}
-                                  className={`w-full justify-start ${!available ? 'opacity-70 border-orange-300 hover:border-orange-400' : ''}`}
-                                  size="sm"
-                                  title={!available ? 'This time slot may be occupied' : ''}
-                                >
-                                  {label}
-                                  {!available && <span className="ml-1 text-xs">⚠</span>}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid gap-2">
+                  <Label>Date</Label>
+                  <div className="border rounded-md p-2 flex justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      className="rounded-md"
+                    />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreateBooking}
-                    disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
-                    size="lg"
-                  >
-                    {creating ? 'Creating...' : 'Confirm Booking'}
-                  </Button>
+                <div className="grid gap-2">
+                  <Label>Time</Label>
+                  <div className="border rounded-md p-1 h-[300px] overflow-y-auto">
+                    {availableHours.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                        <Clock className="h-8 w-8 mb-2 opacity-20" />
+                        <p className="text-sm">No available times.</p>
+                        <p className="text-xs mt-1">Select a date and package first.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 p-2">
+                        {availableHours.map(({ time, available }) => {
+                          const d = new Date(time);
+                          const timeStr = d.toTimeString().split(' ')[0];
+                          const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          const isSelected = selectedTime === timeStr;
+
+                          // For admins, allow selecting even if marked as unavailable (show warning style)
+                          return (
+                            <Button
+                              key={time}
+                              variant={isSelected ? "default" : available ? "outline" : "outline"}
+                              disabled={false} // Always enabled for admins
+                              onClick={() => setSelectedTime(timeStr)}
+                              className={`w-full justify-start ${!available ? 'opacity-70 border-orange-300 hover:border-orange-400' : ''}`}
+                              size="sm"
+                              title={!available ? 'This time slot may be occupied' : ''}
+                            >
+                              {label}
+                              {!available && <span className="ml-1 text-xs">⚠</span>}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Payment Method</Label>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(val: any) => setPaymentMethod(val)}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div>
+                    <RadioGroupItem value="mpesa" id="mpesa" className="peer sr-only" />
+                    <Label
+                      htmlFor="mpesa"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <CreditCard className="mb-3 h-6 w-6" />
+                      M-Pesa
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem value="pod" id="pod" className="peer sr-only" />
+                    <Label
+                      htmlFor="pod"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <ShieldCheck className="mb-3 h-6 w-6" />
+                      Pay on Delivery
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} size="lg">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBooking}
+                disabled={creating || !selectedDate || !selectedTime || !selectedService || !selectedPackage || !recipientName || !recipientPhone}
+                size="lg"
+              >
+                {creating ? 'Creating...' : 'Confirm Booking'}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -2192,7 +2268,7 @@ export default function Bookings() {
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">Booking Details</DialogTitle>
             </DialogHeader>
-            
+
             {loadingBookingDetails ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
@@ -2459,7 +2535,7 @@ export default function Bookings() {
               <DialogTitle className="text-2xl font-bold">Edit/Reschedule Booking</DialogTitle>
               <CardDescription>Update booking date, time, or service</CardDescription>
             </DialogHeader>
-            
+
             {editingBooking && (
               <div className="space-y-6 py-4">
                 <div className="grid gap-2">
@@ -2562,7 +2638,7 @@ export default function Bookings() {
                 Customer History
               </DialogTitle>
             </DialogHeader>
-            
+
             {loadingCustomerHistory ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
@@ -2664,7 +2740,6 @@ export default function Bookings() {
             ) : null}
           </DialogContent>
         </Dialog>
-
       </div>
     </div>
   );

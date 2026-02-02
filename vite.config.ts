@@ -9,10 +9,10 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 5000,
     proxy: {
-      '/api/analytics': {
+      // Proxy API requests to backend (NestJS on port 3000)
+      '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

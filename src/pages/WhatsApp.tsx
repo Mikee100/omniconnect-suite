@@ -80,33 +80,34 @@ export default function WhatsApp() {
       }
     };
 
+    // Load settings from API
+    const loadSettings = async () => {
+      try {
+        const response = await getWhatsAppSettings();
+        if (response.data) {
+          setSettings(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+        // Fallback to localStorage if API fails
+        const savedSettings = localStorage.getItem('whatsapp-settings');
+        if (savedSettings) {
+          setSettings(JSON.parse(savedSettings));
+        }
+      }
+    };
+
     loadConversations();
+    loadSettings();
 
-    // Load settings from localStorage or API
-    const savedSettings = localStorage.getItem('whatsapp-settings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-
-    // Set up polling for real-time updates
+    // Set up polling for real-time updates (only for conversations list)
+    // Messages are loaded via the separate useEffect that depends on selectedCustomerId
     const pollInterval = setInterval(() => {
       loadConversations();
-      if (selectedCustomerId) {
-        const loadConversationMessages = async () => {
-          try {
-            const response = await getWhatsAppMessages(selectedCustomerId);
-            const messages = response?.data?.messages;
-            setMessages(Array.isArray(messages) ? messages : []);
-          } catch (error) {
-            console.error('Failed to load conversation messages:', error);
-          }
-        };
-        loadConversationMessages();
-      }
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(pollInterval);
-  }, [selectedCustomerId]);
+  }, []); // Remove selectedCustomerId dependency to avoid recreating interval
 
   // Load conversation messages when customer is selected
   useEffect(() => {
@@ -114,18 +115,13 @@ export default function WhatsApp() {
       const loadConversationMessages = async () => {
         try {
           const response = await getWhatsAppMessages(selectedCustomerId);
-          setMessages(response.messages);
-
-          // Load customer AI status
-          // Note: We need to get customer details to check aiEnabled
-          // For now, we'll assume it's enabled or add a separate API call later
-
-          // Check if we should show typing indicator
-          // Show typing if the last message is from user (inbound) and no recent AI response
-          const messages = response?.data?.messages;
+          // Handle both response.data.messages and response.messages
+          const messages = response?.data?.messages || response?.messages || [];
           const safeMessages = Array.isArray(messages) ? messages : [];
           setMessages(safeMessages);
 
+          // Check if we should show typing indicator
+          // Show typing if the last message is from user (inbound) and no recent AI response
           const lastMessage = safeMessages[safeMessages.length - 1];
           if (lastMessage && lastMessage.direction === 'inbound') {
             const messageTime = new Date(lastMessage.timestamp).getTime();
@@ -144,6 +140,16 @@ export default function WhatsApp() {
         }
       };
       loadConversationMessages();
+
+      // Set up polling for messages in this conversation
+      const messagePollInterval = setInterval(() => {
+        loadConversationMessages();
+      }, 3000);
+
+      return () => clearInterval(messagePollInterval);
+    } else {
+      // Clear messages when no customer is selected
+      setMessages([]);
     }
   }, [selectedCustomerId]);
 
@@ -191,22 +197,44 @@ export default function WhatsApp() {
   const handleSendMessage = async () => {
     if (newMessage.trim() && selectedRecipient.trim()) {
       setIsTyping(true);
+      const messageContent = newMessage.trim();
+      setNewMessage(''); // Clear input immediately for better UX
+      
       try {
-        // Send message via API
-        await sendWhatsAppMessage({ to: selectedRecipient, message: newMessage });
+        // Send message via API (include customerId if available)
+        await sendWhatsAppMessage({ 
+          to: selectedRecipient, 
+          message: messageContent,
+          customerId: selectedCustomerId || undefined
+        });
 
-        // Add to local messages list
-        const message: WhatsAppMessage = {
-          id: Date.now().toString(),
-          from: settings.phoneNumberId,
-          to: selectedRecipient,
-          content: newMessage,
-          timestamp: new Date().toISOString(),
-          direction: 'outbound',
-          customerId: selectedCustomerId,
-        };
-        setMessages(prev => [...prev, message]);
-        setNewMessage('');
+        // Reload messages from API to get the saved message
+        // Add a small delay to ensure database write has completed
+        if (selectedCustomerId) {
+          // Wait a bit for the database write to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          try {
+            const response = await getWhatsAppMessages(selectedCustomerId);
+            const messages = response?.data?.messages || response?.messages || [];
+            setMessages(Array.isArray(messages) ? messages : []);
+            console.log(`Reloaded ${messages.length} messages after sending`);
+          } catch (error) {
+            console.error('Failed to reload messages after send:', error);
+            // Fallback: add to local state if reload fails
+            const message: WhatsAppMessage = {
+              id: Date.now().toString(),
+              from: settings.phoneNumberId || '',
+              to: selectedRecipient,
+              content: messageContent,
+              timestamp: new Date().toISOString(),
+              direction: 'outbound',
+              customerId: selectedCustomerId,
+            };
+            setMessages(prev => [...prev, message]);
+          }
+        } else {
+          console.warn('No customerId available, messages may not reload automatically');
+        }
 
         // Show success toast
         toast({
@@ -215,6 +243,8 @@ export default function WhatsApp() {
         });
       } catch (error: any) {
         console.error('Failed to send message:', error);
+        // Restore message content on error
+        setNewMessage(messageContent);
         const errorMessage = error.response?.data?.message || error.message || 'There was an error sending your message. Please try again.';
         toast({
           title: 'Failed to send message',
@@ -262,6 +292,16 @@ export default function WhatsApp() {
 
   return (
     <div className="w-full h-[150vh] flex flex-col bg-background rounded-xl shadow overflow-hidden">
+      {/* Asset Information Header - Shows phone number for Meta App Review */}
+      {settings.phoneNumberId && (
+        <div className="flex-shrink-0 bg-[#25d366]/10 border-b border-[#25d366]/20 px-4 py-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="h-4 w-4 text-[#25d366]" />
+            <span className="text-muted-foreground">WhatsApp Business Phone Number ID:</span>
+            <span className="font-semibold text-foreground font-mono">{settings.phoneNumberId}</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-1 min-h-0">
         {/* Conversations List */}
         <div className=" w-[200px] lg:w-[220px] bg-muted/30 border-r border-border flex flex-col min-h-0">

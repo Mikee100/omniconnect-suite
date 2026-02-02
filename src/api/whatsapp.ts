@@ -45,6 +45,11 @@ export interface WhatsAppSettings {
   phoneNumberId?: string;
   businessAccountId?: string;
   enabled?: boolean;
+  accessToken?: string;
+  verifyToken?: string;
+  webhookUrl?: string;
+  apiVersion?: string;
+  baseUrl?: string;
 }
 
 export interface WhatsAppMessage {
@@ -52,7 +57,10 @@ export interface WhatsAppMessage {
   customerId: string;
   content: string;
   direction: 'inbound' | 'outbound';
-  createdAt: string;
+  timestamp: string; // Backend returns 'timestamp', not 'createdAt'
+  from?: string;
+  to?: string;
+  customerName?: string;
 }
 
 export interface WhatsAppConversation {
@@ -67,7 +75,7 @@ export const getWhatsAppSettings = () => api.get('/whatsapp/settings');
 export const updateWhatsAppSettings = (settings: Partial<WhatsAppSettings>) =>
   api.post('/whatsapp/settings', settings);
 export const testWhatsAppConnection = () => api.post('/whatsapp/test-connection');
-export const sendWhatsAppMessage = (data: { to: string; message: string }) =>
+export const sendWhatsAppMessage = (data: { to: string; message: string; customerId?: string }) =>
   api.post('/whatsapp/send', data);
 export const getWhatsAppMessages = (customerId?: string) =>
   api.get(`/whatsapp/messages?customerId=${customerId || ''}`);

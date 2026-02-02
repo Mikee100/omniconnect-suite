@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config';
 
 interface HealthStatus {
   status: 'up' | 'down';
@@ -20,8 +21,6 @@ interface HealthResponse {
   error?: Record<string, HealthStatus>;
   details?: Record<string, any>;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const fetchHealthStatus = async (endpoint: string): Promise<HealthResponse> => {
   try {

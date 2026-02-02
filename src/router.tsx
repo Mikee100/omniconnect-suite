@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import AiPerformanceDashboard from "./pages/AiPerformanceDashboard";
+import AIObservability from "./pages/AIObservability";
 import QueueDashboard from "./pages/QueueDashboard";
 import MpesaTest from "./pages/MpesaTest";
 import Bookings from "./pages/Bookings";
@@ -139,6 +140,16 @@ const AppRouter = () => {
               <ProtectedRoute>
                 <Layout>
                   <AiPerformanceDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-observability"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AIObservability />
                 </Layout>
               </ProtectedRoute>
             }

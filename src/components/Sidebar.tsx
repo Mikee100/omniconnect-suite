@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Packages', href: '/packages', icon: Package },
   { name: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen },
   { name: 'AI Performance', href: '/ai-performance', icon: BarChart },
+  { name: 'AI Observability', href: '/ai-observability', icon: Activity },
   { name: 'AI Test Chat', href: '/ai-test-chat', icon: MessageSquare },
   { name: 'Health Monitoring', href: '/health', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
