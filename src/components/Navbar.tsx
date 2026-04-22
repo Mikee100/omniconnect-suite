@@ -132,6 +132,17 @@ export function Navbar() {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* AI Test Page Link */}
+          <Link to="/ai-test-page">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent tap-target transition-all duration-200 rounded-lg"
+            >
+              AI Test
+            </Button>
+          </Link>
+
           {/* Notifications */}
           <Link to="/notifications">
             <Button

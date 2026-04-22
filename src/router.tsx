@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import PackagesPage from "./pages/Packages";
 import AIPromptSettings from "./pages/AIPromptSettings";
 import AITestChat from "./pages/AITestChat";
+import AITestPage from "./pages/AITestPage";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { useAuthStore } from "./state/authStore";
@@ -190,6 +191,16 @@ const AppRouter = () => {
               <ProtectedRoute>
                 <Layout>
                   <AITestChat />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-test-page"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AITestPage />
                 </Layout>
               </ProtectedRoute>
             }
